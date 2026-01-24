@@ -1,0 +1,4 @@
+syn/
+build/
+logs/
+*.vcd

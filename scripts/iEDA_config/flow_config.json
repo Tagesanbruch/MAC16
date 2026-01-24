@@ -1,0 +1,12 @@
+{
+    "ConfigPath": {
+        "idb_path": "/ysyx/mac/scripts/iEDA_config/db_default_config.json",
+        "ifp_path": "/ysyx/mac/scripts/iEDA_config/fp_default_config.json",
+        "ipl_path": "/ysyx/mac/scripts/iEDA_config/pl_default_config.json",
+        "irt_path": "/ysyx/mac/scripts/iEDA_config/rt_default_config.json",
+        "idrc_path": "/ysyx/mac/scripts/iEDA_config/drc_default_config.json",
+        "icts_path": "/ysyx/mac/scripts/iEDA_config/cts_default_config.json",
+        "ito_path": "/ysyx/mac/scripts/iEDA_config/to_default_config.json",
+        "ipnp_path": "/ysyx/mac/scripts/iEDA_config/pnp_default_config.json"
+    }
+}
