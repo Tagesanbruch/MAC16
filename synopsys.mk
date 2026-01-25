@@ -1,72 +1,59 @@
-# Synopsys Toolchain Makefile
-# Usage: make -f synopsys.mk <target>
+# Synopsys Flow Local Wrappers
+# This makefile handles the synchronization and remote execution of Synopsys tools.
+# It is meant to be included by the main Makefile when FLOW=synopsys.
 
-DESIGN = mac16
-RTL_DIR = ./rtl
-VERIF_DIR = ./verif
-BUILD_DIR = ./build_synopsys
-SCRIPT_DIR = ./scripts
+# --- Remote Configuration ---
+REMOTE_HOST = unix20@100.118.95.3
+REMOTE_PROJECT_ROOT = /home/unix20/mac
+REMOTE_DOCKER_CONTAINER = mac16_env
+REMOTE_DOCKER_WORK_DIR = /work/mac
 
-# Source Files
-RTL_FILES = $(RTL_DIR)/adder.sv
-TB_FILES = $(VERIF_DIR)/tb_adder.sv
+# --- Sync Targets ---
 
-# Tools
-VCS = vcs
-DC = dc_shell
-FM = fm_shell
-ICC = icc_shell # or icc2_shell
-VERDI = verdi
+# A. Sync Local to Remote Host (Volume source)
+sync_host:
+	@echo "Syncing code to remote host ($(REMOTE_HOST))..."
+	rsync -avz --exclude '.git' --exclude 'build*' --exclude 'syn' --exclude 'logs' \
+		./ $(REMOTE_HOST):$(REMOTE_PROJECT_ROOT)/
 
-# Tool Options
-VCS_FLAGS = -full64 -sverilog -l $(abspath $(BUILD_DIR)/vcs.log)
-DC_FLAGS = -64bit -no_gui
-FM_FLAGS = -64bit
-ICC_FLAGS = -64bit
+# B. Sync Up (Alias to sync_host)
+sync_up: sync_host
+	@echo "Code synced to host (Auto-mounted in Docker)."
 
-# Directories
-$(shell mkdir -p $(BUILD_DIR))
+# One-time setup: Verify PDK on host
+setup_remote: sync_host
+	@echo "Verifying PDK on remote host..."
+	ssh $(REMOTE_HOST) "if [ -d $(REMOTE_PROJECT_ROOT)/icsprout55-pdk ]; then echo 'PDK found.'; else echo 'PDK not found on host!'; exit 1; fi"
 
-# Targets
+# --- Remote Execution Helper ---
+# Runs 'make -f synopsys_remote.mk <target>' inside the container
+run_remote_%: sync_up
+	@echo "Executing '$*' on remote container..."
+	ssh $(REMOTE_HOST) "docker exec -w $(REMOTE_DOCKER_WORK_DIR) $(REMOTE_DOCKER_CONTAINER) make -f synopsys_remote.mk $*"
 
-all: vcs
+# --- Sync DOWN: Remote -> Local ---
+sync_down:
+	@echo "Syncing results back from remote..."
+	rsync -avz $(REMOTE_HOST):$(REMOTE_PROJECT_ROOT)/build_synopsys/ ./build_synopsys/
+	rsync -avz $(REMOTE_HOST):$(REMOTE_PROJECT_ROOT)/logs/ ./logs/ || true
 
-# 1. Simulation (VCS)
-vcs:
-	@echo "Running VCS Compilation and Simulation..."
-	mkdir -p $(BUILD_DIR)/sim
-	cd $(BUILD_DIR)/sim && $(VCS) $(VCS_FLAGS) \
-		+incdir+$(abspath $(RTL_DIR)) \
-		+incdir+$(abspath $(VERIF_DIR)) \
-		$(foreach f,$(RTL_FILES),$(abspath $f)) \
-		$(foreach f,$(TB_FILES),$(abspath $f)) \
-		-o simv
-	cd $(BUILD_DIR)/sim && ./simv | tee sim.log
+# --- User Facing Targets ---
+# These map local targets to the remote execution flow
 
-# 2. Waveform Verification (Verdi)
-verdi:
-	@echo "Opening Verdi..."
-	cd $(BUILD_DIR)/sim && $(VERDI) -ssf tb_mac16.fsdb &
+vcs: run_remote_vcs sync_down
+dc: run_remote_dc sync_down
+fm: run_remote_fm sync_down
+icc: run_remote_icc sync_down
 
-# 3. Synthesis (Design Compiler)
-dc:
-	@echo "Running Design Compiler..."
-	mkdir -p $(BUILD_DIR)/syn
-	cd $(BUILD_DIR)/syn && $(DC) $(DC_FLAGS) -f $(abspath $(SCRIPT_DIR)/dc_syn.tcl) | tee dc.log
+clean_remote:
+	ssh $(REMOTE_HOST) "docker exec -w $(REMOTE_DOCKER_WORK_DIR) $(REMOTE_DOCKER_CONTAINER) make -f synopsys_remote.mk clean"
 
-# 4. Formal Verification (Formality)
-fm:
-	@echo "Running Formality..."
-	mkdir -p $(BUILD_DIR)/fm
-	cd $(BUILD_DIR)/fm && $(FM) $(FM_FLAGS) -f $(abspath $(SCRIPT_DIR)/fm_check.tcl) | tee fm.log
-
-# 5. Place & Route (IC Compiler)
-icc:
-	@echo "Running IC Compiler..."
-	mkdir -p $(BUILD_DIR)/icc
-	cd $(BUILD_DIR)/icc && $(ICC) $(ICC_FLAGS) -f $(abspath $(SCRIPT_DIR)/icc_pr.tcl) | tee icc.log
-
-clean:
-	rm -rf $(BUILD_DIR)csrc $(BUILD_DIR)/simv* $(BUILD_DIR)/ucli.key
-
-.PHONY: vcs verdi dc fm icc clean all
+# Help for this flow
+help_synopsys:
+	@echo "Synopsys Flow Targets:"
+	@echo "  make vcs            (Remote: VCS Simulation)"
+	@echo "  make dc             (Remote: Design Compiler Synthesis)"
+	@echo "  make fm             (Remote: Formality Verification)"
+	@echo "  make icc            (Remote: IC Compiler P&R)"
+	@echo "  make setup_remote   (Check remote PDK)"
+	@echo "  make clean_remote   (Clean remote build dir)"
