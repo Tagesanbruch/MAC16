@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 //============================================================================
 // Experiment F: Full MAC16 Wrapper with DCS + Kogge-Stone
+// Yosys-compatible Verilog 2005
 // 
 // Features:
 //   - 3-stage pipeline fused MAC core
@@ -10,14 +11,14 @@
 // Target: 1.5 GHz
 //============================================================================
 module mac16 (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        mode,
-    input  logic        inA,
-    input  logic        inB,
-    output logic        sum_out,
-    output logic        carry,
-    output logic        out_ready
+    input  wire        clk,
+    input  wire        rst_n,
+    input  wire        mode,
+    input  wire        inA,
+    input  wire        inB,
+    output reg         sum_out,
+    output wire        carry,
+    output reg         out_ready
 );
 
     localparam INPUT_BITS  = 16;
@@ -29,35 +30,38 @@ module mac16 (
     localparam S_COMPUTE2 = 2'd2;  // Stage 3
     localparam S_OUTPUT   = 2'd3;
 
-    logic [1:0] state;
+    reg [1:0] state;
     
-    logic [4:0] cnt;
-    logic [INPUT_BITS-1:0] shift_a, shift_b;
-    logic [OUTPUT_BITS-1:0] out_shift_reg;
-    logic carry_reg;
-    logic first_op;
-    logic mode_r;
+    reg [4:0] cnt;
+    reg [INPUT_BITS-1:0] shift_a, shift_b;
+    reg [OUTPUT_BITS-1:0] out_shift_reg;
+    reg carry_reg;
+    reg first_op;
+    reg mode_r;
 
     // Fused MAC signals
-    logic [15:0] mac_inA, mac_inB;
-    logic        mac_valid_in;
-    logic [39:0] mac_result_binary;
-    logic        mac_valid_out;
-    logic [23:0] mac_result;
+    reg  [15:0] mac_inA, mac_inB;
+    reg         mac_valid_in;
+    wire [39:0] mac_result_binary;
+    wire        mac_valid_out;
+    wire [23:0] mac_result;
     
     // External accumulation registers (for spec compatibility)
-    logic [23:0] accum;
-    logic [23:0] prev_product;
-    logic [24:0] add_result;
-    logic [23:0] final_result;
+    reg [23:0] accum;
+    reg [23:0] prev_product;
+    reg [24:0] add_result;
+    reg [23:0] final_result;
     
     // Kogge-Stone adder for external accumulation
     wire [23:0] ks_accum_sum;
     wire        ks_accum_cout;
+    wire [23:0] ks_b_input;
+    
+    assign ks_b_input = mode_r ? accum : prev_product;
     
     kogge_stone_adder #(.WIDTH(24)) u_ks_accum (
         .a(mac_result),
-        .b(mode_r ? accum : prev_product),
+        .b(ks_b_input),
         .cin(1'b0),
         .sum(ks_accum_sum),
         .cout(ks_accum_cout)
@@ -81,7 +85,7 @@ module mac16 (
     assign mac_result = mac_result_binary[23:0];
     
     // Result selection using Kogge-Stone adder
-    always_comb begin
+    always @(*) begin
         if (first_op && mode_r == 1'b0) begin
             add_result = {1'b0, mac_result};
             final_result = mac_result;
@@ -91,23 +95,23 @@ module mac16 (
         end
     end
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_INPUT;
-            cnt <= '0;
-            shift_a <= '0;
-            shift_b <= '0;
-            out_shift_reg <= '0;
+            cnt <= 5'b0;
+            shift_a <= 16'b0;
+            shift_b <= 16'b0;
+            out_shift_reg <= 24'b0;
             carry_reg <= 1'b0;
             first_op <= 1'b1;
             mode_r <= 1'b0;
             sum_out <= 1'b0;
             out_ready <= 1'b0;
-            mac_inA <= '0;
-            mac_inB <= '0;
+            mac_inA <= 16'b0;
+            mac_inB <= 16'b0;
             mac_valid_in <= 1'b0;
-            prev_product <= '0;
-            accum <= '0;
+            prev_product <= 24'b0;
+            accum <= 24'b0;
         end else begin
             case (state)
                 S_INPUT: begin
@@ -120,7 +124,7 @@ module mac16 (
                     shift_b <= {shift_b[INPUT_BITS-2:0], inB};
 
                     if (cnt == INPUT_BITS - 1) begin
-                        cnt <= '0;
+                        cnt <= 5'b0;
                         state <= S_COMPUTE1;
                         mac_inA <= {shift_a[INPUT_BITS-2:0], inA};
                         mac_inB <= {shift_b[INPUT_BITS-2:0], inB};
@@ -162,10 +166,10 @@ module mac16 (
                     sum_out <= out_shift_reg[OUTPUT_BITS-2];
 
                     if (cnt == OUTPUT_BITS - 2) begin
-                        cnt <= '0;
+                        cnt <= 5'b0;
                         state <= S_INPUT;
-                        shift_a <= '0;
-                        shift_b <= '0;
+                        shift_a <= 16'b0;
+                        shift_b <= 16'b0;
                     end else begin
                         cnt <= cnt + 1'b1;
                     end

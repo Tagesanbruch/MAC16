@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 //============================================================================
 // Kogge-Stone Parallel Prefix Adder
+// Yosys-compatible Verilog 2005
 // 
 // Features:
 //   - O(log N) delay for N-bit addition
@@ -14,11 +15,11 @@
 module kogge_stone_adder #(
     parameter WIDTH = 24
 )(
-    input  logic [WIDTH-1:0] a,
-    input  logic [WIDTH-1:0] b,
-    input  logic             cin,
-    output logic [WIDTH-1:0] sum,
-    output logic             cout
+    input  wire [WIDTH-1:0] a,
+    input  wire [WIDTH-1:0] b,
+    input  wire             cin,
+    output wire [WIDTH-1:0] sum,
+    output wire             cout
 );
 
     // Generate and Propagate
@@ -122,12 +123,13 @@ endmodule
 
 //============================================================================
 // 40-bit Kogge-Stone Adder
+// Yosys-compatible Verilog 2005
 //============================================================================
 module kogge_stone_40bit (
-    input  logic [39:0] a,
-    input  logic [39:0] b,
-    output logic [39:0] sum,
-    output logic        cout
+    input  wire [39:0] a,
+    input  wire [39:0] b,
+    output wire [39:0] sum,
+    output wire        cout
 );
 
     // Generate and Propagate

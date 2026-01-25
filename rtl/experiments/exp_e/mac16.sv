@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 //============================================================================
 // Experiment E: Full MAC16 Wrapper with Double Carry-Save Multiplier
+// Yosys-compatible Verilog 2005
 // 
 // This wraps the fused MAC core and adds:
 //   - Serial input/output interface (for compatibility)
@@ -16,14 +17,14 @@
 // Target: > 1.2 GHz
 //============================================================================
 module mac16 (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        mode,
-    input  logic        inA,
-    input  logic        inB,
-    output logic        sum_out,
-    output logic        carry,
-    output logic        out_ready
+    input  wire         clk,
+    input  wire         rst_n,
+    input  wire         mode,
+    input  wire         inA,
+    input  wire         inB,
+    output reg          sum_out,
+    output wire         carry,
+    output reg          out_ready
 );
 
     localparam INPUT_BITS  = 16;
@@ -34,27 +35,27 @@ module mac16 (
     localparam S_COMPUTE     = 2'd1;  // Fused MAC (2 cycles)
     localparam S_OUTPUT      = 2'd2;
 
-    logic [1:0] state;
+    reg [1:0] state;
     
-    logic [4:0] cnt;
-    logic [INPUT_BITS-1:0] shift_a, shift_b;
-    logic [OUTPUT_BITS-1:0] out_shift_reg;
-    logic carry_reg;
-    logic first_op;
-    logic mode_r;
+    reg [4:0] cnt;
+    reg [INPUT_BITS-1:0] shift_a, shift_b;
+    reg [OUTPUT_BITS-1:0] out_shift_reg;
+    reg carry_reg;
+    reg first_op;
+    reg mode_r;
 
     // Fused MAC signals
-    logic [15:0] mac_inA, mac_inB;
-    logic        mac_valid_in;
-    logic [39:0] mac_result_binary;
-    logic        mac_valid_out;
-    logic [23:0] mac_result;
+    reg  [15:0] mac_inA, mac_inB;
+    reg         mac_valid_in;
+    wire [39:0] mac_result_binary;
+    wire        mac_valid_out;
+    wire [23:0] mac_result;
     
     // Accumulation registers (external - for spec compatibility)
-    logic [23:0] accum;
-    logic [23:0] prev_product;
-    logic [24:0] add_result;
-    logic [23:0] final_result;
+    reg [23:0] accum;
+    reg [23:0] prev_product;
+    reg [24:0] add_result;
+    reg [23:0] final_result;
 
     // Instantiate fused MAC core (mode=0: no internal accumulation)
     mac16_fused u_mac_fused (
@@ -74,7 +75,7 @@ module mac16 (
     assign mac_result = mac_result_binary[23:0];
     
     // External accumulation logic (matches original spec)
-    always_comb begin
+    always @(*) begin
         if (mode_r == 1'b0) begin
             // Mode 0: current_product + prev_product
             if (first_op) begin
@@ -89,23 +90,23 @@ module mac16 (
         final_result = add_result[23:0];
     end
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_INPUT;
-            cnt <= '0;
-            shift_a <= '0;
-            shift_b <= '0;
-            out_shift_reg <= '0;
+            cnt <= 5'b0;
+            shift_a <= 16'b0;
+            shift_b <= 16'b0;
+            out_shift_reg <= 24'b0;
             carry_reg <= 1'b0;
             first_op <= 1'b1;
             mode_r <= 1'b0;
             sum_out <= 1'b0;
             out_ready <= 1'b0;
-            mac_inA <= '0;
-            mac_inB <= '0;
+            mac_inA <= 16'b0;
+            mac_inB <= 16'b0;
             mac_valid_in <= 1'b0;
-            prev_product <= '0;
-            accum <= '0;
+            prev_product <= 24'b0;
+            accum <= 24'b0;
         end else begin
             case (state)
                 S_INPUT: begin
@@ -118,7 +119,7 @@ module mac16 (
                     shift_b <= {shift_b[INPUT_BITS-2:0], inB};
 
                     if (cnt == INPUT_BITS - 1) begin
-                        cnt <= '0;
+                        cnt <= 5'b0;
                         state <= S_COMPUTE;
                         // Launch MAC
                         mac_inA <= {shift_a[INPUT_BITS-2:0], inA};
@@ -158,10 +159,10 @@ module mac16 (
                     sum_out <= out_shift_reg[OUTPUT_BITS-2];
 
                     if (cnt == OUTPUT_BITS - 2) begin
-                        cnt <= '0;
+                        cnt <= 5'b0;
                         state <= S_INPUT;
-                        shift_a <= '0;
-                        shift_b <= '0;
+                        shift_a <= 16'b0;
+                        shift_b <= 16'b0;
                     end else begin
                         cnt <= cnt + 1'b1;
                     end

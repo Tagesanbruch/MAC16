@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 //============================================================================
 // Experiment F: Ultra-High-Speed Fused MAC with DCS + Kogge-Stone
+// Yosys-compatible Verilog 2005
 // 
 // Improvements over Exp E:
 //   1. Kogge-Stone parallel prefix adder for final output
@@ -16,17 +17,17 @@
 // Target: 1.5 GHz
 //============================================================================
 module mac16_fused_ks (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        mode,       // 0: multiply only, 1: accumulate
-    input  logic        clear,      // Clear accumulator
-    input  logic [15:0] inA,
-    input  logic [15:0] inB,
-    input  logic        valid_in,
-    output logic [39:0] result_sum,
-    output logic [39:0] result_carry,
-    output logic [39:0] result_binary,
-    output logic        valid_out
+    input  wire         clk,
+    input  wire         rst_n,
+    input  wire         mode,       // 0: multiply only, 1: accumulate
+    input  wire         clear,      // Clear accumulator
+    input  wire  [15:0] inA,
+    input  wire  [15:0] inB,
+    input  wire         valid_in,
+    output wire  [39:0] result_sum,
+    output wire  [39:0] result_carry,
+    output wire  [39:0] result_binary,
+    output wire         valid_out
 );
 
     //========================================================================
@@ -41,16 +42,16 @@ module mac16_fused_ks (
     );
 
     // Pipeline register S1
-    logic [7:0]  neg_s1, zero_s1, two_s1;
-    logic [15:0] a_s1;
-    logic        valid_s1, mode_s1, clear_s1;
+    reg [7:0]  neg_s1, zero_s1, two_s1;
+    reg [15:0] a_s1;
+    reg        valid_s1, mode_s1, clear_s1;
     
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            neg_s1   <= '0;
-            zero_s1  <= '0;
-            two_s1   <= '0;
-            a_s1     <= '0;
+            neg_s1   <= 8'b0;
+            zero_s1  <= 8'b0;
+            two_s1   <= 8'b0;
+            a_s1     <= 16'b0;
             valid_s1 <= 1'b0;
             mode_s1  <= 1'b0;
             clear_s1 <= 1'b0;
@@ -66,30 +67,36 @@ module mac16_fused_ks (
     end
 
     // Partial product generation
-    wire [32:0] pp_s1 [0:7];
+    wire [32:0] pp_s1_0, pp_s1_1, pp_s1_2, pp_s1_3, pp_s1_4, pp_s1_5, pp_s1_6, pp_s1_7;
     partial_product_gen u_ppg (
         .a(a_s1),
         .neg(neg_s1),
         .zero(zero_s1),
         .two(two_s1),
-        .pp(pp_s1)
+        .pp0(pp_s1_0),
+        .pp1(pp_s1_1),
+        .pp2(pp_s1_2),
+        .pp3(pp_s1_3),
+        .pp4(pp_s1_4),
+        .pp5(pp_s1_5),
+        .pp6(pp_s1_6),
+        .pp7(pp_s1_7)
     );
 
     // Align partial products
-    wire [39:0] pp_aligned [0:7];
-    assign pp_aligned[0] = {{7{pp_s1[0][32]}}, pp_s1[0]};
-    assign pp_aligned[1] = {{5{pp_s1[1][32]}}, pp_s1[1], 2'b0};
-    assign pp_aligned[2] = {{3{pp_s1[2][32]}}, pp_s1[2], 4'b0};
-    assign pp_aligned[3] = {{1{pp_s1[3][32]}}, pp_s1[3], 6'b0};
-    assign pp_aligned[4] = {pp_s1[4][30:0], 8'b0};
-    assign pp_aligned[5] = {pp_s1[5][28:0], 10'b0};
-    assign pp_aligned[6] = {pp_s1[6][26:0], 12'b0};
-    assign pp_aligned[7] = {pp_s1[7][24:0], 14'b0};
+    wire [39:0] pp_aligned0 = {{7{pp_s1_0[32]}}, pp_s1_0};
+    wire [39:0] pp_aligned1 = {{5{pp_s1_1[32]}}, pp_s1_1, 2'b0};
+    wire [39:0] pp_aligned2 = {{3{pp_s1_2[32]}}, pp_s1_2, 4'b0};
+    wire [39:0] pp_aligned3 = {{1{pp_s1_3[32]}}, pp_s1_3, 6'b0};
+    wire [39:0] pp_aligned4 = {pp_s1_4[30:0], 8'b0};
+    wire [39:0] pp_aligned5 = {pp_s1_5[28:0], 10'b0};
+    wire [39:0] pp_aligned6 = {pp_s1_6[26:0], 12'b0};
+    wire [39:0] pp_aligned7 = {pp_s1_7[24:0], 14'b0};
 
     //========================================================================
     // Double Carry-Save Accumulator
     //========================================================================
-    logic [39:0] acc_sum, acc_carry;
+    reg [39:0] acc_sum, acc_carry;
     
     wire [39:0] feedback_sum   = (mode_s1 && !clear_s1) ? acc_sum   : 40'd0;
     wire [39:0] feedback_carry = (mode_s1 && !clear_s1) ? acc_carry : 40'd0;
@@ -100,24 +107,24 @@ module mac16_fused_ks (
     wire [39:0] l1_s0, l1_c0, l1_s1, l1_c1, l1_s2, l1_c2;
     
     csa #(.WIDTH(40)) u_l1_csa0 (
-        .a(pp_aligned[0]),
-        .b(pp_aligned[1]),
-        .c(pp_aligned[2]),
+        .a(pp_aligned0),
+        .b(pp_aligned1),
+        .c(pp_aligned2),
         .sum(l1_s0),
         .carry(l1_c0)
     );
     
     csa #(.WIDTH(40)) u_l1_csa1 (
-        .a(pp_aligned[3]),
-        .b(pp_aligned[4]),
-        .c(pp_aligned[5]),
+        .a(pp_aligned3),
+        .b(pp_aligned4),
+        .c(pp_aligned5),
         .sum(l1_s1),
         .carry(l1_c1)
     );
     
     csa #(.WIDTH(40)) u_l1_csa2 (
-        .a(pp_aligned[6]),
-        .b(pp_aligned[7]),
+        .a(pp_aligned6),
+        .b(pp_aligned7),
         .c(feedback_sum),
         .sum(l1_s2),
         .carry(l1_c2)
@@ -143,16 +150,16 @@ module mac16_fused_ks (
     );
 
     // Pipeline register S2 (mid-compression)
-    logic [39:0] l2_s0_r, l2_c0_r, l2_s1_r, l2_c1_r, fb_carry_r;
-    logic        valid_s2, mode_s2, clear_s2;
+    reg [39:0] l2_s0_r, l2_c0_r, l2_s1_r, l2_c1_r, fb_carry_r;
+    reg        valid_s2, mode_s2, clear_s2;
     
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            l2_s0_r   <= '0;
-            l2_c0_r   <= '0;
-            l2_s1_r   <= '0;
-            l2_c1_r   <= '0;
-            fb_carry_r <= '0;
+            l2_s0_r   <= 40'b0;
+            l2_c0_r   <= 40'b0;
+            l2_s1_r   <= 40'b0;
+            l2_c1_r   <= 40'b0;
+            fb_carry_r <= 40'b0;
             valid_s2  <= 1'b0;
             mode_s2   <= 1'b0;
             clear_s2  <= 1'b0;
@@ -194,12 +201,12 @@ module mac16_fused_ks (
     );
 
     // Pipeline register S3 / Accumulator update
-    logic valid_s3;
+    reg valid_s3;
     
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            acc_sum   <= '0;
-            acc_carry <= '0;
+            acc_sum   <= 40'b0;
+            acc_carry <= 40'b0;
             valid_s3  <= 1'b0;
         end else if (valid_s2) begin
             // When clear_s2=1, feedback was already zeroed, so this stores
