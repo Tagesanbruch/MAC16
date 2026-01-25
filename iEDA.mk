@@ -2,15 +2,29 @@
 # Usage: make -f iEDA.mk EXP=exp_baseline yosys
 #        make -f iEDA.mk EXP=exp_a sta
 #        make -f iEDA.mk EXP=exp_b yosys sta
+#        make -f iEDA.mk EXP=exp_d PDK=icsprout55r yosys sta  # Use R library
 
 YOSYS_STA_DIR = $(abspath ../yosys-sta)
 DESIGN = mac16
-PDK = icsprout55
 BUILD_DIR = ./build
 TIMESTAMP = $(shell date "+%Y-%m-%d_%H-%M-%S")
 SYN_DIR_ROOT = ./syn
 CLK_FREQ_MHZ = 1000
 CLK_PORT_NAME = clk
+
+# =============================================================================
+# PDK and Synthesis Strategy Selection
+# =============================================================================
+# Available PDKs:
+#   icsprout55     - Default L library (low power)
+#   icsprout55r    - R library (high performance)
+#   icsprout55_mix - Mixed L+R library
+PDK ?= icsprout55
+
+# Synthesis Strategy (DELAY or AREA, 0-4)
+# DELAY strategies: 0, 1, 2, 3, 4 (higher = more aggressive)
+# AREA strategies: 0, 1, 2, 3
+export SYNTH_STRATEGY ?= DELAY 4
 
 # =============================================================================
 # Experiment Selection
@@ -31,6 +45,10 @@ EXP_DIR_EXISTS = $(shell test -d $(RTL_DIR) && echo "yes" || echo "no")
 
 RTL_FILES = $(shell find $(RTL_DIR) -maxdepth 1 -name '*.sv' ! -name 'tb_*.sv' 2>/dev/null)
 
+# Construct synthesis directory name with PDK suffix
+PDK_SUFFIX = $(subst icsprout55,,$(PDK))
+SYN_DIR_TIMESTAMP = yosys-syn$(EXP_SUFFIX)$(PDK_SUFFIX)-$(TIMESTAMP)
+
 $(shell mkdir -p $(BUILD_DIR))
 
 # =============================================================================
@@ -49,8 +67,17 @@ list_exp:
 		done; \
 	fi
 	@echo ""
-	@echo " Usage: make -f iEDA.mk EXP=<name> <target>"
-	@echo " Example: make -f iEDA.mk EXP=exp_b yosys sta"
+	@echo " Available PDKs:"
+	@echo "  PDK=icsprout55      - L library (low power, default)"
+	@echo "  PDK=icsprout55r     - R library (high performance)"
+	@echo "  PDK=icsprout55_mix  - Mixed L+R library"
+	@echo ""
+	@echo " Synthesis Strategy:"
+	@echo "  SYNTH_STRATEGY='DELAY 0|1|2|3|4' - Delay optimization"
+	@echo "  SYNTH_STRATEGY='AREA 0|1|2|3'    - Area optimization"
+	@echo ""
+	@echo " Usage: make -f iEDA.mk EXP=<name> [PDK=<pdk>] <target>"
+	@echo " Example: make -f iEDA.mk EXP=exp_c PDK=icsprout55r yosys sta"
 	@echo "=============================================="
 
 all: yosys
@@ -65,6 +92,8 @@ yosys:
 	@echo " Synthesizing Experiment: $(EXP)"
 	@echo " RTL Directory: $(RTL_DIR)"
 	@echo " RTL Files: $(RTL_FILES)"
+	@echo " PDK: $(PDK)"
+	@echo " Strategy: $(SYNTH_STRATEGY)"
 	@echo "=============================================="
 	@mkdir -p $(SYN_DIR_ROOT)
 	$(MAKE) -C $(YOSYS_STA_DIR) syn \
@@ -73,10 +102,10 @@ yosys:
 		PDK=$(PDK) \
 		CLK_FREQ_MHZ=$(CLK_FREQ_MHZ) \
 		CLK_PORT_NAME=$(CLK_PORT_NAME) \
-		O=$(abspath $(SYN_DIR_ROOT)/yosys-syn$(EXP_SUFFIX)-$(TIMESTAMP))
+		O=$(abspath $(SYN_DIR_ROOT)/$(SYN_DIR_TIMESTAMP))
 
-# Find latest synthesis directory for this experiment
-LATEST_SYN_DIR = $(shell ls -td $(SYN_DIR_ROOT)/yosys-syn$(EXP_SUFFIX)-* 2>/dev/null | head -1)
+# Find latest synthesis directory for this experiment and PDK
+LATEST_SYN_DIR = $(shell ls -td $(SYN_DIR_ROOT)/yosys-syn$(EXP_SUFFIX)$(PDK_SUFFIX)-* 2>/dev/null | head -1)
 
 sta:
 	@if [ -z "$(LATEST_SYN_DIR)" ]; then \
