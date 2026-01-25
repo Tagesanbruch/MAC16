@@ -2,3 +2,4 @@ syn/
 build/
 logs/
 *.vcd
+.DS_Store

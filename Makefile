@@ -6,7 +6,7 @@
 # Usage:
 #   make [FLOW=ieda|synopsys] <target>
 
-FLOW ?= synopsys
+FLOW ?= ieda
 
 # --- Project Configuration ---
 DESIGN = mac16
