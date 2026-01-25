@@ -1,10 +1,13 @@
 `timescale 1ns/1ps
 //============================================================================
-// Experiment C: 4-Stage Deep Pipeline MAC16
+// Experiment D: Structural Booth Multiplier MAC16
+// 
 // Description:
-//   - 4-stage pipeline multiplier for aggressive timing
-//   - Operand isolation for low power
-// Target: 1GHz timing closure
+//   - Uses structural Radix-4 Booth multiplier with Wallace tree
+//   - 3-stage pipeline multiplier
+//   - Traditional accumulator (not DCS yet - preparation for exp_e)
+//
+// Target: Validate structural Booth implementation matches behavioral
 //============================================================================
 module mac16 (
     input  logic        clk,
@@ -20,14 +23,13 @@ module mac16 (
     localparam INPUT_BITS  = 16;
     localparam OUTPUT_BITS = 24;
 
-    // State machine - extended for 4-stage multiplier
+    // State machine
     localparam S_INPUT       = 3'd0;
-    localparam S_MULT_STAGE1 = 3'd1;  // Input register + split
-    localparam S_MULT_STAGE2 = 3'd2;  // 8x8 multiplications
-    localparam S_MULT_STAGE3 = 3'd3;  // Carry-save combine
-    localparam S_MULT_STAGE4 = 3'd4;  // Final add
-    localparam S_ADD         = 3'd5;  // Accumulation
-    localparam S_OUTPUT      = 3'd6;
+    localparam S_MULT_STAGE1 = 3'd1;  // Booth encode
+    localparam S_MULT_STAGE2 = 3'd2;  // First compression
+    localparam S_MULT_STAGE3 = 3'd3;  // Second compression + add
+    localparam S_ADD         = 3'd4;  // Accumulation
+    localparam S_OUTPUT      = 3'd5;
 
     logic [2:0] state;
     
@@ -47,12 +49,12 @@ module mac16 (
     logic mult_valid_in, mult_valid_out;
     logic mult_enable;
 
-    // Operand isolation control
+    // Operand isolation
     assign mult_enable = (state == S_INPUT && cnt == INPUT_BITS - 1) ||
-                         (state >= S_MULT_STAGE1 && state <= S_MULT_STAGE4);
+                         (state >= S_MULT_STAGE1 && state <= S_MULT_STAGE3);
 
-    // 4-stage pipeline multiplier
-    mult16_4stage u_mult (
+    // Structural Booth multiplier
+    mult16_booth u_mult (
         .clk(clk),
         .rst_n(rst_n),
         .a(mult_enable ? shift_a : 16'd0),
@@ -62,6 +64,7 @@ module mac16 (
         .valid_out(mult_valid_out)
     );
 
+    // Accumulation logic
     always_comb begin
         if (mode_r == 1'b0) begin
             add_result = {1'b0, mult_reg[23:0]} + {1'b0, prev_product};
@@ -122,10 +125,6 @@ module mac16 (
                 end
 
                 S_MULT_STAGE3: begin
-                    state <= S_MULT_STAGE4;
-                end
-
-                S_MULT_STAGE4: begin
                     if (mult_valid_out) begin
                         mult_reg <= mult_result;
                         state <= S_ADD;
@@ -148,26 +147,18 @@ module mac16 (
                     first_op <= 1'b0;
                     out_ready <= 1'b1;
                     sum_out <= mac_result[OUTPUT_BITS-1];
-                    cnt <= '0;
                     state <= S_OUTPUT;
                 end
 
                 S_OUTPUT: begin
-                    out_ready <= 1'b1;
-                    sum_out <= out_shift_reg[OUTPUT_BITS-2];
                     out_shift_reg <= {out_shift_reg[OUTPUT_BITS-2:0], 1'b0};
+                    sum_out <= out_shift_reg[OUTPUT_BITS-2];
 
                     if (cnt == OUTPUT_BITS - 2) begin
                         cnt <= '0;
-                        out_ready <= 1'b0;
                         state <= S_INPUT;
-
-                        if (mode != mode_r) begin
-                            accum <= '0;
-                            prev_product <= '0;
-                            carry_reg <= 1'b0;
-                            first_op <= 1'b1;
-                        end
+                        shift_a <= '0;
+                        shift_b <= '0;
                     end else begin
                         cnt <= cnt + 1'b1;
                     end
