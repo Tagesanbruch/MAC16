@@ -160,12 +160,16 @@ pr:
 		exit 1; \
 	fi
 	@echo "Running Place & Route (iEDA) for $(EXP)..."
-	@mkdir -p $(LATEST_SYN_DIR)/pr
-	NETLIST="$(abspath $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/$(DESIGN).netlist.v" \
-	../yosys-sta/bin/iEDA $(abspath scripts/ieda_flow.tcl) \
-		$(abspath ../yosys-sta/pdk/icsprout55) \
-		"$(abspath $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/$(DESIGN).netlist.v" \
-		$(abspath scripts/sdc/mac16.sdc) 2>&1 | tee $(LATEST_SYN_DIR)/pr/ieda_pr.log
+	@mkdir -p $(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/report
+	@mkdir -p $(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/cts
+	@mkdir -p $(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/rt
+	../yosys-sta/bin/iEDA /ysyx/mac/scripts/ieda_pr_flow.tcl \
+		"/ysyx/mac/syn/$(notdir $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr" \
+		"/ysyx/mac/syn/$(notdir $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/$(DESIGN).netlist.v" \
+		"/ysyx/mac/scripts/sdc/mac16.sdc" \
+		"0 0 100 100" \
+		"5 5 95 95" \
+		2>&1 | tee $(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/ieda_pr.log
 
 verif:
 	@if [ "$(EXP_DIR_EXISTS)" = "no" ]; then \

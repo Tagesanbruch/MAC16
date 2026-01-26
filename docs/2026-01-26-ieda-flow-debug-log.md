@@ -155,13 +155,28 @@ terminate called after throwing an instance of 'std::logic_error'
 
 ## 验证结果总结 (exp_d @ 1GHz)
 
-### 时序分析 (STA)
+### 时序分析 (STA) - TT Corner
 | 指标 | 值 | 状态 |
 |------|-----|------|
 | 目标频率 | 1000 MHz | - |
 | WNS (Setup) | +0.032 ns | ✓ |
-| TNS | 0 ns | ✓ |
+| TNS (Setup) | 0 ns | ✓ |
+| WNS (Hold) | -0.050 ns | ⚠ |
+| TNS (Hold) | -0.210 ns | ⚠ |
 | 最高可达频率 | 1033 MHz | ✓ |
+
+### 时序分析 (STA) - SS Corner (1.08V/125°C/RCWorst)
+| 指标 | 值 | 状态 |
+|------|-----|------|
+| 目标频率 | 1000 MHz | - |
+| WNS (Setup) | -0.802 ns | ✗ |
+| TNS (Setup) | -169.287 ns | ✗ |
+| WNS (Hold) | -0.050 ns | ⚠ |
+| TNS (Hold) | -0.167 ns | ⚠ |
+| 最高可达频率 | ~555 MHz | - |
+
+**注意**: SS 角设计未满足 1GHz 目标，需要进一步优化或降低目标频率。
+**注意**: FF 角 liberty 文件在 PDK 中不存在，无法进行 FF 角分析。
 
 ### 面积分析
 | 指标 | 值 |
@@ -173,7 +188,7 @@ terminate called after throwing an instance of 'std::logic_error'
 | 触发器数量 | 299 (287 DFFRQX2H7L + 2 DFFSQX2H7L + ICG) |
 | 时序单元占比 | 39.77% |
 
-### 功耗分析
+### 功耗分析 (TT Corner)
 | 指标 | 值 |
 |------|-----|
 | 总功耗 | 5.872 mW |
