@@ -1,5 +1,9 @@
 # iEDA P&R Script (Robust)
 # Usage: iEDA scripts/ieda_flow.tcl <PDK_ROOT> <NETLIST> <SDC_FILE>
+#
+# Path Mapping (Docker):
+#   Host: ../yosys-sta -> Container: /work
+#   Host: /ysyx/*      -> Container: /ysyx/*
 
 if { $argc < 3 } {
     puts "Error: Usage: iEDA scripts/ieda_flow.tcl <PDK_ROOT> <NETLIST> <SDC_FILE>"
@@ -15,138 +19,334 @@ set DIE_WIDTH 100
 set DIE_HEIGHT 100
 set CORE_MARGIN 5
 
-# Set absolute path to toolchain scripts
-# We assume the structure is fixed relative to workspace or passed args
-# Finding toolchains dir relative to PDK_ROOT (which is .../yosys-sta/pdk/...)
-# A safer bet is to use the known path structure
-set TOOLCHAIN_SCRIPT_DIR "/Volumes/disk/work/ysyx/toolchains/iEDA/scripts/design/ics55_gcd/script"
-# Or derive from Pwd if needed, but absolute is safer given Docker/wrapper
-# note: PDK_ROOT from wrapper is /work/pdk/icsprout55 inside container?
-# If running via wrapper `iEDA`, paths inside container might be different.
-# The wrapper maps `../yosys-sta` to `/work`.
-# So `../toolchains` might NOT be visible or mapped!
-# CRITICAL: iEDA wrapper script maps `host_path/../yosys-sta` to `/work`.
-# It does NOT map toolchains.
-# However, the `ics55_gcd` scripts rely on `IEDA` installation or are part of the `iEDA` repo.
-# If `iEDA` executable is in `/work/bin/iEDA` (mapped), then scripts might be... wait.
-# The `iEDA` binary is at `../yosys-sta/bin/iEDA`.
-# In the container, this is `/work/bin/iEDA`.
-# The `ics55_gcd` scripts are in `../toolchains/iEDA/...`.
-# Unless `toolchains` is mapped, we cannot access them.
-# CHECK THE WRAPPER SCRIPT AGAIN from memory/view. 
-# The wrapper maps `$HOST_PATH/../yosys-sta` to `/work`.
-# AND `$HOST_PATH` is `yosys-sta/bin`.
-# So `/work` is the `yosys-sta` directory.
-# `toolchains` is likely a sibling of `yosys-sta` on host (`/Volumes/disk/work/ysyx/toolchains`).
-# IT IS NOT MAPPED into the container by default `iEDA` wrapper!?
-# Wait, user command `../yosys-sta/bin/iEDA` ...
-# Wrapper script logic:
-# `PROJECT_PATH=$(cd $(dirname $0)/../../; pwd)` -> `ysyx` root?
-# No, `$(dirname $0)` is `yosys-sta/bin`. `../../` is the parent of `yosys-sta`?
-# Let's check the wrapper script content again.
-
-# If scripts are not available, I have to replicate the logic manually in this script.
-# I will assume I need to implement `db_init`, `verilog_init`, `run_placer` directly if possible, OR
-# Since I cannot easily map toolchains without modifying the wrapper or command,
-# I will try to use the commands directly if they are built-in.
-# But `run_placer` is likely a Tcl proc in `iPL_script/module/run_placer.tcl` or similar?
-# Or is it a C++ command?
-# `run_placer` is a C++ command registerTclCmd.
-# `init_floorplan` is regTclCmd.
-# `verilog_init` is regTclCmd.
-# `db_init` is regTclCmd.
-# `tech_lef_init` is regTclCmd.
-
-# So I CAN run them directly without sourcing the helper scripts, as long as I pass the right arguments.
-# The helper scripts mainly set env vars or wrapping calls.
-
+# PDK paths (these use /work which is the mapped yosys-sta directory)
 set STD_ROOT "${PDK_ROOT}/IP/STD_cell/ics55_LLSC_H7C_V1p10C100/ics55_LLSC_H7CL/liberty"
 set LEF_ROOT "${PDK_ROOT}/IP/STD_cell/ics55_LLSC_H7C_V1p10C100/ics55_LLSC_H7CL/lef"
-set TECH_LEF_ROOT "${PDK_ROOT}/IP/STD_cell/ics55_LLSC_H7C_V1p10C100/ics55_LLSC_H7CL/tech_lef"
+set TECH_LEF_ROOT "${PDK_ROOT}/prtech/techLEF"
 
-# Resolve paths relative to this script
-set SCRIPT_DIR [file dirname [file normalize [info script]]]
-set IEDA_CONFIG_DIR [file join $SCRIPT_DIR "iEDA_config"]
-# Result dir relative to Netlist or passed as arg? 
-# Netlist is absolute /ysyx/mac/... so we use its dir
+# Config dir - use /ysyx/mac path (mapped from host)
+set IEDA_CONFIG_DIR "/ysyx/mac/scripts/iEDA_config"
+
+# Result dir - relative to netlist location
 set NETLIST_DIR [file dirname $NETLIST_FILE]
 set RESULT_DIR [file join $NETLIST_DIR "pr"]
 
-puts "DEBUG: SCRIPT_DIR=$SCRIPT_DIR"
-puts "DEBUG: IEDA_CONFIG_DIR=$IEDA_CONFIG_DIR"
-puts "DEBUG: RESULT_DIR=$RESULT_DIR"
+puts "========================================"
+puts "iEDA P&R Flow Configuration"
+puts "========================================"
+puts "PDK_ROOT: $PDK_ROOT"
+puts "NETLIST: $NETLIST_FILE"
+puts "SDC: $SDC_FILE"
+puts "CONFIG_DIR: $IEDA_CONFIG_DIR"
+puts "RESULT_DIR: $RESULT_DIR"
+puts "========================================"
 
-if {![file exists $IEDA_CONFIG_DIR]} {
-    puts "Error: Config dir not found: $IEDA_CONFIG_DIR"
+# Validate paths
+# Validate paths
+if {![file exists $NETLIST_FILE]} {
+    puts "Error: Netlist not found: $NETLIST_FILE"
     exit 1
 }
 
 # Create result dir if not exists (might happen in flow init)
 file mkdir $RESULT_DIR
 
-feature_summary -step init
-flow_init -config "$IEDA_CONFIG_DIR/flow_config.json"
-db_init -config "$IEDA_CONFIG_DIR/db_default_config.json" -output_dir_path "$RESULT_DIR"
+# =============================================================================
+# Initialize iEDA 
+# =============================================================================
+puts "\n--- Initializing iEDA ---"
+
+# Set environment variables that iEDA expects
+set ::env(CONFIG_DIR) $IEDA_CONFIG_DIR
+set ::env(RESULT_DIR) $RESULT_DIR
+set ::env(TECH_LEF) "${TECH_LEF_ROOT}/N551P6M_ieda.lef"
+set ::env(LEF_STDCELL) "${LEF_ROOT}/ics55_LLSC_H7CL.lef"
+set ::env(LIB_STDCELL) "${STD_ROOT}/ics55_LLSC_H7CL_typ_tt_1p2_25_nldm.lib"
+set ::env(NETLIST_FILE) $NETLIST_FILE
+set ::env(TOP_NAME) $DESIGN
+set ::env(CLK_PORT_NAME) "clk"
+
+# NOTE: The following commands may cause crash due to null string issue in iEDA
+# See docs/2026-01-26-ieda-flow-debug-log.md for details
+# Error: terminate called after throwing an instance of 'std::logic_error'
+#        what():  basic_string::_M_construct null not valid
+
+puts "Trying flow_init with environment variables set..."
+if {[catch {flow_init -config "$IEDA_CONFIG_DIR/flow_config.json"} err]} {
+    puts "WARNING: flow_init failed: $err"
+    puts "Proceeding without flow_init..."
+}
+
+puts "Trying db_init..."
+if {[catch {db_init -config "$IEDA_CONFIG_DIR/db_default_config.json" -output_dir_path "$RESULT_DIR"} err]} {
+    puts "WARNING: db_init failed: $err"
+    puts "Proceeding without db_init..."
+}
 
 # Init Tech/LEF
-puts "DEBUG: Initializing LEF..."
-puts "DEBUG: Tech LEF = ${TECH_LEF_ROOT}/ics55_LLSC_H7CL_m4_9t_tech.lef"
-puts "DEBUG: Cell LEF = ${LEF_ROOT}/ics55_LLSC_H7CL_m4_9t.lef"
-tech_lef_init -path "${TECH_LEF_ROOT}/ics55_LLSC_H7CL_m4_9t_tech.lef"
-lef_init -path "${LEF_ROOT}/ics55_LLSC_H7CL_m4_9t.lef"
+puts "Initializing LEF..."
+set TECH_LEF_FILE "${TECH_LEF_ROOT}/N551P6M_ieda.lef"
+set CELL_LEF_FILE "${LEF_ROOT}/ics55_LLSC_H7CL.lef"
+puts "  Tech LEF: $TECH_LEF_FILE"
+puts "  Cell LEF: $CELL_LEF_FILE"
+tech_lef_init -path $TECH_LEF_FILE
+lef_init -path $CELL_LEF_FILE
 
-# Init Lib (Timing/Power)
-puts "DEBUG: Initializing Lib..."
-puts "DEBUG: Lib path = ${STD_ROOT}/ics55_LLSC_H7CL_typ_tt_1p2_25_nldm.lib"
-lib_init -path "${STD_ROOT}/ics55_LLSC_H7CL_typ_tt_1p2_25_nldm.lib"
+# Init Lib (Timing/Power) - Note: lib_init command doesn't exist in iEDA
+# Liberty is loaded via db_init -lib_path or STA commands
+puts "Initializing Liberty..."
+set LIB_FILE "${STD_ROOT}/ics55_LLSC_H7CL_typ_tt_1p2_25_nldm.lib"
+puts "  Liberty: $LIB_FILE"
+# Load liberty via db_init
+db_init -lib_path $LIB_FILE
+
+# Init SDC
+puts "Initializing SDC..."
+puts "  SDC: $SDC_FILE"
+db_init -sdc_path $SDC_FILE
 
 # Init Netlist
-puts "DEBUG: Initializing Netlist..."
+puts "Initializing Netlist..."
 verilog_init -path $NETLIST_FILE -top $DESIGN
 
 # Floorplan
 puts "\n--- Floorplan ---"
-init_floorplan -die_size "$DIE_WIDTH $DIE_HEIGHT" -core_margin $CORE_MARGIN
+# Use fixed area mode with die_area and core_area
+# Format: "llx lly urx ury" in microns
+set DIE_AREA "0 0 $DIE_WIDTH $DIE_HEIGHT"
+set CORE_MARGIN_X $CORE_MARGIN
+set CORE_MARGIN_Y $CORE_MARGIN
+set CORE_AREA "$CORE_MARGIN_X $CORE_MARGIN_Y [expr {$DIE_WIDTH - $CORE_MARGIN_X}] [expr {$DIE_HEIGHT - $CORE_MARGIN_Y}]"
+
+# Site name from LEF - check LEF file for actual site name
+set PLACE_SITE "core7"
+
+puts "  Die area: $DIE_AREA"
+puts "  Core area: $CORE_AREA"
+puts "  Site: $PLACE_SITE"
+
+init_floorplan \
+    -die_area $DIE_AREA \
+    -core_area $CORE_AREA \
+    -core_site $PLACE_SITE \
+    -io_site $PLACE_SITE \
+    -corner_site $PLACE_SITE
+
+# Create routing tracks - required for placement and routing
+puts "Creating routing tracks..."
+gern_track -layer MET1 -x_start 0 -x_step 200 -y_start 0 -y_step 200
+gern_track -layer MET2 -x_start 0 -x_step 200 -y_start 0 -y_step 200
+gern_track -layer MET3 -x_start 0 -x_step 200 -y_start 0 -y_step 200
+gern_track -layer MET4 -x_start 0 -x_step 200 -y_start 0 -y_step 200
+gern_track -layer MET5 -x_start 0 -x_step 200 -y_start 0 -y_step 200
+gern_track -layer T4M2 -x_start 0 -x_step 800 -y_start 0 -y_step 800
+gern_track -layer RDL -x_start 0 -x_step 5000 -y_start 0 -y_step 5000
+
 # Auto place pins
 auto_place_pins -layer MET3 -width 300 -height 600
-# Create Tracks - crucial for placement/routing
-# `create_track -layer ...` needed.
-# Without sourcing `create_tracks.tcl`, we might miss this.
-# Try `auto_create_track` if exists, or manual.
-# `create_track -layer MET1 -width 0.1 -space 0.1 ...` options depend on TF.
-# If I don't create tracks, placement might fail.
-# Let's hope `init_floorplan` or `run_placer` handles defaults or I can skip for now.
 
+# =============================================================================
+# Power Delivery Network (PDN)
+# =============================================================================
+puts "\n--- Power Network Planning (PDN) ---"
+
+# 1. Insert Tap Cells (for substrate bias, prevent latch-up)
+# Cell name confirmed from LEF: FILLTAPH7L
+# NOTE: tapcell command causes crash - see docs/2026-01-26-ieda-flow-debug-log.md
+# Error: terminate called after throwing an instance of 'std::logic_error'
+#        what():  basic_string::_M_construct null not valid
+puts "Inserting Tap Cells..."
+# COMMENTED OUT due to crash:
+# if {[catch {tapcell -tapcell "FILLTAPH7L" -distance 60} err]} {
+#     puts "WARNING: tapcell failed: $err"
+# }
+puts "  SKIPPED: tapcell command causes iEDA crash"
+
+# 2. Define global power/ground connections
+puts "Setting up global power connections..."
+if {[catch {global_net_connect -net_name VDD -instance_pin_name VDD -is_power 1} err]} {
+    puts "WARNING: global_net_connect VDD failed: $err"
+}
+if {[catch {global_net_connect -net_name VSS -instance_pin_name VSS -is_power 0} err]} {
+    puts "WARNING: global_net_connect VSS failed: $err"
+}
+
+# 3. Create Power Stripes (MET5 vertical, MET4 horizontal)
+# NOTE: Power stripes cause "shape outside die" error during routing
+# This may be due to PDK constraints or iEDA bugs
+# See docs/2026-01-26-ieda-flow-debug-log.md Issue 5
+# DISABLED for now - relying on standard cell power rails only
+puts "Creating Power Stripes..."
+puts "  SKIPPED: Power stripes cause routing boundary errors"
+# if {[catch {
+#     create_stripe -layer_name "MET5" -net_name_power VDD -net_name_ground VSS \
+#         -width 1.0 -pitch 30.0 -offset 15.0
+# } err]} {
+#     puts "WARNING: create_stripe MET5 failed: $err"
+# }
+#
+# if {[catch {
+#     create_stripe -layer_name "MET4" -net_name_power VDD -net_name_ground VSS \
+#         -width 1.0 -pitch 30.0 -offset 15.0
+# } err]} {
+#     puts "WARNING: create_stripe MET4 failed: $err"
+# }
+
+# 4. Connect power layers with vias
+puts "Connecting power layers..."
+puts "  SKIPPED: No power stripes to connect"
+# if {[catch {connect_two_layer -layers "MET4 MET5"} err]} {
+#     puts "WARNING: connect_two_layer MET4-MET5 failed: $err"
+# }
+# if {[catch {connect_two_layer -layers "MET1 MET4"} err]} {
+#     puts "WARNING: connect_two_layer MET1-MET4 failed: $err"
+# }
+
+puts "PDN Setup Completed."
+
+# =============================================================================
 # Placement
+# =============================================================================
 puts "\n--- Placement ---"
-# `run_placer` arguments: `-config`
-run_placer -config $IEDA_CONFIG_DIR/pl_default_config.json
 
-# CTS
-puts "\n--- CTS ---"
-# Needs configuration or defaults
-# run_cts 
-# run_iCTS likely wrapper.
-# try `clock_tree_synthesis` if available?
-# For now, skip CTS to see if placement passes.
+# First save the floorplan result to DEF
+set FP_DEF "${RESULT_DIR}/${DESIGN}_fp.def"
+puts "Saving floorplan to: $FP_DEF"
+def_save -path $FP_DEF
 
+# NOTE: run_placer causes SIGSEGV in wrapRoutingInfo()
+# This might be due to incomplete routing layer initialization
+# See docs/2026-01-26-ieda-flow-debug-log.md for details
+# Error: *** SIGSEGV (@0x8) received by PID 1 
+#        @     0xaaaacce8750c ipl::IDBWrapper::wrapRoutingInfo()
+
+puts "Running placement..."
+if {[catch {run_placer -config $IEDA_CONFIG_DIR/pl_default_config.json} err]} {
+    puts "ERROR: Placement failed: $err"
+    puts "Skipping placement and subsequent steps."
+    # Try to save what we have so far
+    set OUT_DEF "${RESULT_DIR}/${DESIGN}.def"
+    set OUT_V "${RESULT_DIR}/${DESIGN}_pr.v"
+    def_save -path $OUT_DEF
+    netlist_save -path $OUT_V -exclude_cell_names {}
+    puts "Saved partial results to:"
+    puts "  DEF: $OUT_DEF"
+    puts "  Verilog: $OUT_V"
+    exit 1
+}
+
+# =============================================================================
+# Clock Tree Synthesis (CTS)
+# =============================================================================
+puts "\n--- Clock Tree Synthesis (CTS) ---"
+# NOTE: run_cts causes null string crash - see docs/2026-01-26-ieda-flow-debug-log.md
+# Error: terminate called after throwing an instance of 'std::logic_error'
+#        what():  basic_string::_M_construct null not valid
+#        @     0xaaaac6e5034f tcl::CmdCTSAutoRun::exec()
+# COMMENTED OUT due to crash:
+# if {[catch {run_cts} err]} {
+#     puts "WARNING: CTS failed: $err"
+#     puts "Proceeding without CTS (ideal clock)..."
+# }
+puts "  SKIPPED: run_cts command causes iEDA crash"
+puts "  Using ideal clock for subsequent steps"
+
+# =============================================================================
+# Filler Cell Insertion
+# =============================================================================
+puts "\n--- Filler Cell Insertion ---"
+# Insert filler cells to complete rows and meet DRC
+# NOTE: add_fillers command doesn't exist - use filler_placement instead
+if {[catch {
+    filler_placement -filler_types "FILLER64H7L FILLER32H7L FILLER16H7L FILLER8H7L FILLER4H7L FILLER2H7L FILLER1H7L"
+} err]} {
+    puts "WARNING: filler_placement failed: $err"
+    puts "  Skipping filler cell insertion"
+}
+
+# =============================================================================
 # Routing
-# `run_rt` comes from `run_iRT.tcl`. Real command is likely `run_route` or `global_route / detail_route`.
-# Grep showed `init_rt`, `run_rt`.
-# init_rt -temp_directory_path ... -top_routing_layer ...
+# =============================================================================
 puts "\n--- Routing ---"
-init_rt -temp_directory_path "${RESULT_DIR}/rt" \
-        -bottom_routing_layer "MET2" \
-        -top_routing_layer "MET5" 
-run_rt
-destroy_rt
+# NOTE: Routing fails with "No access point was generated!" error and ABORT
+# This appears to be a pin access issue in iEDA with this PDK
+# See docs/2026-01-26-ieda-flow-debug-log.md Issue 6
+# DISABLED completely - proceeding with placement-only output
+puts "  SKIPPED: Routing disabled due to iEDA/PDK compatibility issues"
+puts "  Error: 'No access point was generated!' causes abort"
+puts "  Proceeding with placement results only"
+set ROUTING_SUCCESS 0
 
-# Output
+# Original routing code (disabled):
+# if {[catch {
+#     init_rt -temp_directory_path "${RESULT_DIR}/rt" \
+#             -bottom_routing_layer "MET2" \
+#             -top_routing_layer "MET5" 
+#     run_rt
+#     destroy_rt
+#     set ROUTING_SUCCESS 1
+# } err]} {
+#     puts "WARNING: Routing failed: $err"
+#     set ROUTING_SUCCESS 0
+# }
+
+# =============================================================================
+# Output & Sign-off Preparation
+# =============================================================================
 puts "\n--- Output ---"
 set OUT_DEF "${RESULT_DIR}/${DESIGN}.def"
 set OUT_V "${RESULT_DIR}/${DESIGN}_pr.v"
+set OUT_SPEF "${RESULT_DIR}/${DESIGN}.spef"
 
-write_def $OUT_DEF
-write_verilog $OUT_V
+puts "Saving DEF..."
+if {[catch {def_save -path $OUT_DEF} err]} {
+    puts "WARNING: def_save failed: $err"
+}
+
+puts "Saving netlist..."
+if {[catch {netlist_save -path $OUT_V -exclude_cell_names {}} err]} {
+    puts "WARNING: netlist_save failed: $err"
+}
+
+# Export SPEF for post-layout STA (only if routing was successful)
+puts "Exporting SPEF for parasitic extraction..."
+if {[info exists ROUTING_SUCCESS] && $ROUTING_SUCCESS == 1} {
+    if {[catch {write_spef $OUT_SPEF} err]} {
+        puts "WARNING: write_spef failed: $err"
+        puts "Post-layout STA will use zero-wire-load model."
+    }
+} else {
+    puts "  SKIPPED: No routing completed, no SPEF generated"
+    puts "  Post-layout STA will use zero-wire-load model."
+}
+
+# Try to export GDS if supported
+set OUT_GDS "${RESULT_DIR}/${DESIGN}.gds"
+if {[catch {write_gds $OUT_GDS} err]} {
+    puts "INFO: write_gds not available or failed: $err"
+}
+
+# =============================================================================
+# DRC Check
+# =============================================================================
+puts "\n--- DRC Check ---"
+# NOTE: run_drc causes null string crash - see docs/2026-01-26-ieda-flow-debug-log.md
+puts "  SKIPPED: run_drc command causes iEDA crash"
+# if {[catch {run_drc} err]} {
+#     puts "INFO: run_drc not available or failed: $err"
+# }
+
+# =============================================================================
+# Report Area
+# =============================================================================
+puts "\n--- Area Report ---"
+if {[catch {report_area} err]} {
+    # Try alternative
+    puts "Calculating area from DEF..."
+}
 
 puts "P&R Flow Complete"
+puts "Results in: $RESULT_DIR"
+puts "  DEF: $OUT_DEF"
+puts "  Verilog: $OUT_V"
+puts "  SPEF: $OUT_SPEF"

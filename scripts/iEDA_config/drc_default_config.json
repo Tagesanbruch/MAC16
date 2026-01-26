@@ -1,0 +1,7 @@
+{
+    "DRC_RULES": {
+        "check_spacing": true,
+        "check_width": true,
+        "check_enclosure": true
+    }
+}

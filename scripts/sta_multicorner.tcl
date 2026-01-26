@@ -55,7 +55,46 @@ proc run_sta {corner lib_path} {
     # 3. Link
     link_design $DESIGN
     
-    # 4. SDC
+    # 4. Read SPEF if available (for post-layout STA)
+    # Try multiple possible SPEF locations
+    set netlist_dir [file dirname $NETLIST]
+    set spef_candidates [list \
+        [string map {".netlist.v" ".spef"} $NETLIST] \
+        [string map {".v" ".spef"} $NETLIST] \
+        "${netlist_dir}/pr/${DESIGN}.spef" \
+        "${netlist_dir}/../pr/${DESIGN}.spef" \
+    ]
+    
+    set spef_found 0
+    foreach spef_path $spef_candidates {
+        if {[file exists $spef_path]} {
+            puts "\n--- Reading SPEF for Post-Layout STA ---"
+            puts "SPEF file: $spef_path"
+            if {[catch {readSpef $spef_path} err]} {
+                puts "WARNING: readSpef failed: $err"
+            } else {
+                # Build RC Tree (kmethod: 0=Elmore, 1=Arnoldi)
+                if {[catch {buildRCTree $spef_path 0} err]} {
+                    puts "WARNING: buildRCTree failed: $err"
+                } else {
+                    puts "SPEF loaded successfully - performing post-layout STA"
+                    set spef_found 1
+                }
+            }
+            break
+        }
+    }
+    
+    if {!$spef_found} {
+        puts "\n--- Pre-Layout STA Mode (no SPEF) ---"
+        puts "WARNING: SPEF not found at any of:"
+        foreach p $spef_candidates {
+            puts "  - $p"
+        }
+        puts "Running with zero-wire-load model."
+    }
+    
+    # 5. SDC
     read_sdc $SDC_FILE
     
     # 5. Report

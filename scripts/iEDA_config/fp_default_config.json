@@ -1,0 +1,10 @@
+{
+    "TAPCELL": {
+        "tapcell_name": "FILLTAPH7L",
+        "distance": 60
+    },
+    "PDN": {
+        "power_net_name": "VDD",
+        "ground_net_name": "VSS"
+    }
+}

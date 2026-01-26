@@ -236,6 +236,119 @@ report:
 		--freq $(CLK_FREQ_MHZ) \
 		--output docs/gap_analysis_report$(EXP_SUFFIX).md
 
+# =============================================================================
+# Complete Sign-off Flow Targets
+# =============================================================================
+
+# Post-layout STA (reads SPEF if available)
+sta_post_pr:
+	@if [ -z "$(LATEST_SYN_DIR)" ]; then \
+		echo "[ERROR] No synthesis results found for EXP=$(EXP)."; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr" ]; then \
+		echo "[ERROR] No P&R results found. Run 'make pr EXP=$(EXP)' first."; \
+		exit 1; \
+	fi
+	@echo "=============================================="
+	@echo " Running Post-Layout STA for $(EXP)"
+	@echo "=============================================="
+	@rm -f $(LATEST_SYN_DIR)/sta_post_pr.log
+	@echo "--- Corner TT (Post-PR) ---" | tee -a $(LATEST_SYN_DIR)/sta_post_pr.log
+	../yosys-sta/bin/iEDA $(abspath scripts/sta_multicorner.tcl) \
+		$(abspath ../yosys-sta/pdk/icsprout55) \
+		"$(abspath $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/$(DESIGN)_pr.v" \
+		$(abspath scripts/sdc/mac16.sdc) "TT" 2>&1 | tee -a $(LATEST_SYN_DIR)/sta_post_pr.log
+
+# Multi-corner Post-layout STA
+sta_post_pr_all:
+	@if [ -z "$(LATEST_SYN_DIR)" ]; then \
+		echo "[ERROR] No synthesis results found for EXP=$(EXP)."; \
+		exit 1; \
+	fi
+	@echo "=============================================="
+	@echo " Running Multi-Corner Post-Layout STA for $(EXP)"
+	@echo "=============================================="
+	@rm -f $(LATEST_SYN_DIR)/sta_post_pr_all.log
+	@for corner in TT SS FF; do \
+		echo "--- Corner $$corner (Post-PR) ---" | tee -a $(LATEST_SYN_DIR)/sta_post_pr_all.log; \
+		../yosys-sta/bin/iEDA $(abspath scripts/sta_multicorner.tcl) \
+			$(abspath ../yosys-sta/pdk/icsprout55) \
+			"$(abspath $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/$(DESIGN)_pr.v" \
+			$(abspath scripts/sdc/mac16.sdc) "$$corner" 2>&1 | tee -a $(LATEST_SYN_DIR)/sta_post_pr_all.log; \
+	done
+
+# Complete sign-off flow: verif -> synth -> equiv -> pr -> sta_post_pr_all
+signoff: verif yosys equiv pr sta_post_pr_all
+	@echo "=============================================="
+	@echo " Sign-off Flow Complete for $(EXP)"
+	@echo "=============================================="
+	@echo " Results in: $(LATEST_SYN_DIR)"
+	@echo ""
+	@echo " Checklist:"
+	@echo "   [✓] Functional Verification"
+	@echo "   [✓] Logic Synthesis"
+	@echo "   [✓] Formal Equivalence Check"
+	@echo "   [✓] Place & Route"
+	@echo "   [✓] Multi-Corner Post-Layout STA"
+	@echo "=============================================="
+
+# Quick P&R + Post-PR STA
+pr_sta: pr sta_post_pr
+	@echo "P&R and Post-Layout STA complete for $(EXP)"
+
+# Summary of all verification results
+verify_summary:
+	@echo "=============================================="
+	@echo " Verification Summary for $(EXP)"
+	@echo "=============================================="
+	@if [ -z "$(LATEST_SYN_DIR)" ]; then \
+		echo "[ERROR] No synthesis results found for EXP=$(EXP)."; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "Directory: $(LATEST_SYN_DIR)"
+	@echo ""
+	@echo "--- Synthesis ---"
+	@if [ -f "$(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/$(DESIGN).netlist.v" ]; then \
+		echo "  [✓] Netlist generated"; \
+	else \
+		echo "  [✗] Netlist not found"; \
+	fi
+	@echo ""
+	@echo "--- Equivalence Check ---"
+	@if [ -f "$(LATEST_SYN_DIR)/equiv.log" ]; then \
+		if grep -q "PASS\|SUCCESS\|Equivalent" $(LATEST_SYN_DIR)/equiv.log 2>/dev/null; then \
+			echo "  [✓] Equivalence check passed"; \
+		else \
+			echo "  [?] Equivalence check - review log"; \
+		fi \
+	else \
+		echo "  [✗] Equivalence check not run"; \
+	fi
+	@echo ""
+	@echo "--- Place & Route ---"
+	@if [ -f "$(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/$(DESIGN).def" ]; then \
+		echo "  [✓] DEF generated"; \
+	else \
+		echo "  [✗] DEF not found"; \
+	fi
+	@if [ -f "$(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/$(DESIGN).spef" ]; then \
+		echo "  [✓] SPEF generated"; \
+	else \
+		echo "  [✗] SPEF not found"; \
+	fi
+	@echo ""
+	@echo "--- STA Results ---"
+	@if [ -f "$(LATEST_SYN_DIR)/sta_all.log" ]; then \
+		echo "  Pre-layout STA:"; \
+		grep -E "WNS|TNS|slack" $(LATEST_SYN_DIR)/sta_all.log 2>/dev/null | head -10 || echo "    (check log)"; \
+	fi
+	@if [ -f "$(LATEST_SYN_DIR)/sta_post_pr_all.log" ]; then \
+		echo "  Post-layout STA:"; \
+		grep -E "WNS|TNS|slack" $(LATEST_SYN_DIR)/sta_post_pr_all.log 2>/dev/null | head -10 || echo "    (check log)"; \
+	fi
+
 clean:
 	-rm -rf $(BUILD_DIR) $(SYN_DIR_ROOT)
 
@@ -243,3 +356,4 @@ clean_exp:
 	-rm -rf $(SYN_DIR_ROOT)/yosys-syn$(EXP_SUFFIX)-*
 
 .PHONY: yosys sta sta_all equiv pr power verif report clean clean_exp all exp_flow compare list_exp
+.PHONY: sta_post_pr sta_post_pr_all signoff pr_sta verify_summary

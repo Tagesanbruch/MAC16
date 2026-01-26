@@ -1,0 +1,7 @@
+{
+    "TEMP_DIRECTORY": "./rt_temp",
+    "ROUTING_LAYER": {
+        "bottom": "MET2",
+        "top": "MET5"
+    }
+}
