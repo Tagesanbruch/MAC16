@@ -49,7 +49,7 @@
     "global_latency_opt_ratio": "0.5",
     "local_latency_opt_ratio": "0.9",
     "external_model": [],
-    "use_netlist": "OFF",
+    "use_netlist": "ON",
     "net_list": [
         {
             "clock_name": "core_clock",

@@ -156,6 +156,28 @@ def_save -path $FP_DEF
 puts "Floorplan saved to: $FP_DEF"
 
 #===========================================================
+##   Load lib/sdc for iNO/Placement (required for timing-driven tools)
+#===========================================================
+puts "\n--- Loading timing data for iNO/Placement ---"
+source $IEDA_TCL_SCRIPT_DIR/DB_script/db_init_lib.tcl
+source $IEDA_TCL_SCRIPT_DIR/DB_script/db_init_sdc.tcl
+
+#===========================================================
+##   iNO Fix Fanout (DISABLED - causes instance mismatch bug)
+#===========================================================
+puts "\n--- Skipping iNO Fix Fanout (known bug with single-session flow) ---"
+# if {[catch {
+#     run_no_fixfanout -config $IEDA_CONFIG_DIR/no_default_config.json
+#     set iNO_DEF "$RESULT_DIR/iNO_fix_fanout_result.def"
+#     def_save -path $iNO_DEF
+#     netlist_save -path "$RESULT_DIR/iNO_fix_fanout_result.v" -exclude_cell_names {}
+#     puts "Fix fanout saved to: $iNO_DEF"
+# } err]} {
+#     puts "WARNING: iNO fix_fanout failed: $err"
+#     puts "  Proceeding without fanout fix"
+# }
+
+#===========================================================
 ##   run Placer
 #===========================================================
 puts "\n--- Placement ---"
