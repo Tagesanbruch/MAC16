@@ -166,48 +166,48 @@ def_save -path $PL_DEF
 puts "Placement saved to: $PL_DEF"
 
 #===========================================================
-##   CTS - SKIPPED due to lib path issues in iEDA
-##   The CTS module expects liberty path from different config
+##   CTS - Clock Tree Synthesis
 #===========================================================
 puts "\n--- Clock Tree Synthesis ---"
-puts "  SKIPPED: CTS has library path issues in iEDA"
-puts "  Proceeding with ideal clock"
 
-# Original CTS code (disabled):
-# if {[catch {
-#     run_cts -config $IEDA_CONFIG_DIR/cts_default_config.json -work_dir "$RESULT_DIR/cts"
-#     set CTS_DEF "$RESULT_DIR/iCTS_result.def"
-#     def_save -path $CTS_DEF
-#     puts "CTS saved to: $CTS_DEF"
-# } err]} {
-#     puts "WARNING: CTS failed: $err"
-#     puts "  Proceeding with ideal clock"
-# }
+# Load liberty library for CTS (required by iEDA CTS module)
+puts "Loading liberty library for CTS..."
+source $IEDA_TCL_SCRIPT_DIR/DB_script/db_init_lib.tcl
+
+# Read SDC for timing
+puts "Loading SDC..."
+source $IEDA_TCL_SCRIPT_DIR/DB_script/db_init_sdc.tcl
+
+if {[catch {
+    run_cts -config $IEDA_CONFIG_DIR/cts_default_config.json -work_dir "$RESULT_DIR/cts"
+    set CTS_DEF "$RESULT_DIR/iCTS_result.def"
+    def_save -path $CTS_DEF
+    puts "CTS saved to: $CTS_DEF"
+} err]} {
+    puts "WARNING: CTS failed: $err"
+    puts "  Proceeding with ideal clock"
+}
 
 #===========================================================
 ##   Routing
 #===========================================================
 puts "\n--- Routing ---"
-puts "  SKIPPED: Routing has pin access issues with this PDK"
-puts "  Proceeding with placement-only results"
 
-# Original Routing code (disabled due to pin access error):
-# if {[catch {
-#     init_rt -temp_directory_path "$RESULT_DIR/rt" \
-#             -bottom_routing_layer "MET2" \
-#             -top_routing_layer "MET5" \
-#             -thread_number 4 \
-#             -output_inter_result 0
-#     run_rt
-#     destroy_rt
-#     set RT_DEF "$RESULT_DIR/iRT_result.def"
-#     def_save -path $RT_DEF
-#     puts "Routing saved to: $RT_DEF"
-# } err]} {
-#     puts "WARNING: Routing failed: $err"
-#     puts "  Proceeding with placement-only results"
-# }
-
+if {[catch {
+    init_rt -temp_directory_path "$RESULT_DIR/rt" \
+            -bottom_routing_layer "MET2" \
+            -top_routing_layer "MET5" \
+            -thread_number 4 \
+            -output_inter_result 0
+    run_rt
+    destroy_rt
+    set RT_DEF "$RESULT_DIR/iRT_result.def"
+    def_save -path $RT_DEF
+    puts "Routing saved to: $RT_DEF"
+} err]} {
+    puts "WARNING: Routing failed: $err"
+    puts "  Proceeding with placement-only results"
+}
 #===========================================================
 ##   Save Final Results
 #===========================================================

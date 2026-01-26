@@ -152,6 +152,7 @@ equiv:
 	fi
 	@echo "Running Equivalence Check for $(EXP)..."
 	NETLIST="$(abspath $(LATEST_SYN_DIR))/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/$(DESIGN).netlist.v" \
+	RTL_DIR="$(RTL_DIR)" \
 	yosys -c scripts/equiv_check.tcl 2>&1 | tee $(LATEST_SYN_DIR)/equiv.log
 
 pr:

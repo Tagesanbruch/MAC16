@@ -1,12 +1,14 @@
 # Equivalence Checking Script using Yosys
 # Usage: yosys -c scripts/equiv_check.tcl
+# Environment variables:
+#   NETLIST: Path to synthesis netlist
+#   RTL_DIR: Path to RTL source directory (default: rtl)
 
 yosys -import
 
 set DESIGN "mac16"
-set RTL_FILE "rtl/mac16.sv"
-# Note: Using the netlist from the latest synthesis run
-# We need to pass the netlist path as an env var or argument, but for simplicity/robustness in Makefile, we'll use an env var
+
+# Get environment variables
 if {[info exists ::env(NETLIST)]} {
     set GATE_FILE $::env(NETLIST)
 } else {
@@ -14,9 +16,26 @@ if {[info exists ::env(NETLIST)]} {
     exit 1
 }
 
-# 1. Read Gold (RTL)
-read_verilog -sv $RTL_FILE
-read_verilog -sv rtl/mult16.sv
+if {[info exists ::env(RTL_DIR)]} {
+    set RTL_DIR $::env(RTL_DIR)
+} else {
+    set RTL_DIR "rtl"
+}
+
+puts "INFO: RTL_DIR = $RTL_DIR"
+puts "INFO: GATE_FILE = $GATE_FILE"
+
+# 1. Read Gold (RTL) - read all .sv files from RTL_DIR
+set rtl_files [glob -nocomplain -directory $RTL_DIR *.sv]
+foreach rtl_file $rtl_files {
+    # Skip testbench files
+    if {[string match "*/tb_*.sv" $rtl_file]} {
+        puts "Skipping testbench: $rtl_file"
+        continue
+    }
+    puts "Reading RTL: $rtl_file"
+    read_verilog -sv $rtl_file
+}
 prep -top $DESIGN -flatten
 async2sync
 memory_map
