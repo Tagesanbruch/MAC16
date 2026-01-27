@@ -71,6 +71,67 @@ verif: verif-vl
 validate: test verif-vl
 	@echo "=== All tests passed ==="
 
+# ============================================================================
+# Synthesis targets (using parent's iEDA.mk)
+# ============================================================================
+YOSYS_STA_DIR = $(abspath ../../yosys-sta)
+SYN_DIR_ROOT = ../syn
+DESIGN = mac16
+CLK_FREQ_MHZ = 1000
+CLK_PORT_NAME = clk
+TIMESTAMP = $(shell date "+%Y-%m-%d_%H-%M-%S")
+
+# PDK selection
+PDK ?= icsprout55
+
+# Chisel-specific synthesis directory naming
+SYN_DIR_CHISEL = yosys-syn-chisel-$(EXP)-$(TIMESTAMP)
+
+# Synthesis target for Chisel-generated RTL
+synth: gen_$(EXP)
+	@echo "=============================================="
+	@echo " Synthesizing Chisel $(EXP)"
+	@echo " RTL: $(VSRC_DIR)/$(EXP)/mac16.sv"
+	@echo " PDK: $(PDK)"
+	@echo "=============================================="
+	@mkdir -p $(SYN_DIR_ROOT)
+	$(MAKE) -C $(YOSYS_STA_DIR) syn \
+		DESIGN=$(DESIGN) \
+		RTL_FILES="$(abspath $(VSRC_DIR)/$(EXP)/mac16.sv)" \
+		PDK=$(PDK) \
+		CLK_FREQ_MHZ=$(CLK_FREQ_MHZ) \
+		CLK_PORT_NAME=$(CLK_PORT_NAME) \
+		O=$(abspath $(SYN_DIR_ROOT)/$(SYN_DIR_CHISEL))
+
+# Find latest Chisel synthesis directory
+LATEST_CHISEL_SYN = $(shell ls -td $(SYN_DIR_ROOT)/yosys-syn-chisel-$(EXP)-* 2>/dev/null | head -1)
+
+# STA target for Chisel synthesis results
+sta: 
+	@if [ -z "$(LATEST_CHISEL_SYN)" ]; then \
+		echo "[ERROR] No Chisel synthesis results found for $(EXP)."; \
+		echo "Run 'make synth EXP=$(EXP)' first."; \
+		exit 1; \
+	fi
+	@echo "=============================================="
+	@echo " Running STA for Chisel $(EXP)"
+	@echo " Synthesis Directory: $(LATEST_CHISEL_SYN)"
+	@echo "=============================================="
+	$(MAKE) -C $(YOSYS_STA_DIR) sta \
+		DESIGN=$(DESIGN) \
+		RTL_FILES="$(abspath $(VSRC_DIR)/$(EXP)/mac16.sv)" \
+		PDK=$(PDK) \
+		CLK_FREQ_MHZ=$(CLK_FREQ_MHZ) \
+		CLK_PORT_NAME=$(CLK_PORT_NAME) \
+		O=$(abspath $(LATEST_CHISEL_SYN))
+
+# Complete flow: generate -> verify -> synth -> sta
+flow: gen_$(EXP) verif-vl synth sta
+	@echo "=============================================="
+	@echo " Chisel $(EXP) Flow Complete"
+	@echo " Results: $(LATEST_CHISEL_SYN)"
+	@echo "=============================================="
+
 help:
 	@echo "Usage:"
 	@echo "  make compile         - Compile Scala sources"
