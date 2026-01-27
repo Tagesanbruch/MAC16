@@ -6,3 +6,4 @@ logs/
 
 useless/
 ref/
+*.out

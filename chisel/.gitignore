@@ -1,0 +1,4 @@
+*.bak
+out/
+build/
+obj_dir/
