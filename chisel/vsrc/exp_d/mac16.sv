@@ -760,147 +760,122 @@ module Compressor4to2Array(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/
      _comp_io_carry};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:62:7, :79:22, :92:25
 endmodule
 
-module Mult16Booth(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-  input         clock,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-                reset,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-  input  [15:0] io_a,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:16:14
-                io_b,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:16:14
-  input         io_validIn,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:16:14
-  output [31:0] io_product,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:16:14
-  output        io_validOut	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:16:14
+module Mult16Booth2Stage(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+  input         clock,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+                reset,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+  input  [15:0] io_a,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:16:14
+                io_b,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:16:14
+  input         io_validIn,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:16:14
+  output [31:0] io_product,	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:16:14
+  output        io_validOut	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:16:14
 );
 
-  wire [39:0] _comp42_io_sum;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:97:22
-  wire [39:0] _comp42_io_carry;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:97:22
-  wire [32:0] _ppGen_io_pp_0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_5;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_6;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [32:0] _ppGen_io_pp_7;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-  wire [7:0]  _booth_io_neg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21
-  wire [7:0]  _booth_io_zero;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21
-  wire [7:0]  _booth_io_two;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21
-  reg  [7:0]  negS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24
-  reg  [7:0]  zeroS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:34:24
-  reg  [7:0]  twoS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:35:24
-  reg  [15:0] aS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:36:24
-  reg         validS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24
-  reg  [39:0] row0S2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25
-  reg  [39:0] row1S2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:81:25
-  reg  [39:0] row2S2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:82:25
-  reg  [39:0] row3S2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:83:25
-  reg         validS2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:84:25
-  reg  [31:0] productS3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:107:26
-  reg         validS3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:108:26
-  always @(posedge clock or posedge reset) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-    if (reset) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-      negS1 <= 8'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24
-      zeroS1 <= 8'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24, :34:24
-      twoS1 <= 8'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24, :35:24
-      aS1 <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:36:24
-      validS1 <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24
-      row0S2 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25
-      row1S2 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25, :81:25
-      row2S2 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25, :82:25
-      row3S2 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25, :83:25
-      validS2 <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :84:25
-      productS3 <= 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:107:26
-      validS3 <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :108:26
+  wire [39:0] _comp42_io_sum;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:75:22
+  wire [39:0] _comp42_io_carry;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:75:22
+  wire [32:0] _ppGen_io_pp_0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_5;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_6;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [32:0] _ppGen_io_pp_7;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+  wire [7:0]  _booth_io_neg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
+  wire [7:0]  _booth_io_zero;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
+  wire [7:0]  _booth_io_two;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
+  reg  [39:0] row0S1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25
+  reg  [39:0] row1S1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:59:25
+  reg  [39:0] row2S1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:60:25
+  reg  [39:0] row3S1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:61:25
+  reg         validS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:62:25
+  reg  [31:0] productS2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:85:26
+  reg         validS2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:86:26
+  always @(posedge clock or posedge reset) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+    if (reset) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+      row0S1 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25
+      row1S1 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25, :59:25
+      row2S1 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25, :60:25
+      row3S1 <= 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25, :61:25
+      validS1 <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50, :62:25
+      productS2 <= 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:85:26
+      validS2 <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50, :86:26
     end
-    else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
+    else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
       automatic logic [39:0] csa1Sum =
         {{7{_ppGen_io_pp_0[32]}}, _ppGen_io_pp_0}
         ^ {{5{_ppGen_io_pp_1[32]}}, _ppGen_io_pp_1, 2'h0}
-        ^ {{3{_ppGen_io_pp_2[32]}}, _ppGen_io_pp_2, 4'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :46:21, :61:{22,27,45}, :62:{22,27,45}, :63:{22,27,45}
-      automatic logic [38:0] _GEN = {{6{_ppGen_io_pp_0[32]}}, _ppGen_io_pp_0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21, :61:{22,45}
-      automatic logic [38:0] _GEN_0 = {{4{_ppGen_io_pp_1[32]}}, _ppGen_io_pp_1, 2'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21, :62:{22,45}
-      automatic logic [38:0] _GEN_1 = {{2{_ppGen_io_pp_2[32]}}, _ppGen_io_pp_2, 4'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :46:21, :63:{22,45}
-      automatic logic [38:0] csa1Carry = _GEN & _GEN_0 | _GEN_0 & _GEN_1 | _GEN & _GEN_1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:61:22, :62:22, :63:22
+        ^ {{3{_ppGen_io_pp_2[32]}}, _ppGen_io_pp_2, 4'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :42:{22,27,45}, :43:{22,27,45}, :44:{22,27,45}
+      automatic logic [38:0] _GEN = {{6{_ppGen_io_pp_0[32]}}, _ppGen_io_pp_0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :42:{22,45}
+      automatic logic [38:0] _GEN_0 = {{4{_ppGen_io_pp_1[32]}}, _ppGen_io_pp_1, 2'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :43:{22,45}
+      automatic logic [38:0] _GEN_1 = {{2{_ppGen_io_pp_2[32]}}, _ppGen_io_pp_2, 4'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :44:{22,45}
+      automatic logic [38:0] csa1Carry = _GEN & _GEN_0 | _GEN_0 & _GEN_1 | _GEN & _GEN_1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:42:22, :43:22, :44:22
       automatic logic [39:0] csa2Sum =
         {_ppGen_io_pp_3[32], _ppGen_io_pp_3, 6'h0} ^ {1'h0, _ppGen_io_pp_4[30:0], 8'h0}
-        ^ {1'h0, _ppGen_io_pp_5[28:0], 10'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24, :37:24, :46:21, :64:{22,37}, :65:{16,37}, :66:{16,22,37}
-      automatic logic [38:0] _GEN_2 = {_ppGen_io_pp_3, 6'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21, :64:22
-      automatic logic [38:0] _GEN_3 = {_ppGen_io_pp_4[30:0], 8'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24, :46:21, :65:{16,37}
-      automatic logic [38:0] _GEN_4 = {_ppGen_io_pp_5[28:0], 10'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21, :66:{16,22,37}
+        ^ {1'h0, _ppGen_io_pp_5[28:0], 10'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :45:{22,37}, :46:{16,22,37}, :47:{16,22,37}, :54:50
+      automatic logic [38:0] _GEN_2 = {_ppGen_io_pp_3, 6'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :45:22
+      automatic logic [38:0] _GEN_3 = {_ppGen_io_pp_4[30:0], 8'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :46:{16,22,37}
+      automatic logic [38:0] _GEN_4 = {_ppGen_io_pp_5[28:0], 10'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :47:{16,22,37}
       automatic logic [38:0] csa2Carry =
-        _GEN_2 & _GEN_3 | _GEN_3 & _GEN_4 | _GEN_2 & _GEN_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:64:22, :65:16, :66:16
-      automatic logic [38:0] _GEN_5 = {csa1Carry[37:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :76:50
-      automatic logic [38:0] _GEN_6 = {_ppGen_io_pp_6[26:0], 12'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21, :67:{16,22,37}
-      automatic logic [38:0] _GEN_7 = {csa2Carry[37:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :77:50
-      automatic logic [38:0] _GEN_8 = {_ppGen_io_pp_7[24:0], 14'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21, :68:{16,22,37}
-      negS1 <= _booth_io_neg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21, :33:24
-      zeroS1 <= _booth_io_zero;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21, :34:24
-      twoS1 <= _booth_io_two;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21, :35:24
-      aS1 <= io_a;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:36:24
-      validS1 <= io_validIn;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24
-      row0S2 <= csa1Sum ^ {csa1Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_6[26:0], 12'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :46:21, :67:{16,22,37}, :76:50, :80:25
-      row1S2 <= {csa1Sum[38:0] & _GEN_5 | _GEN_5 & _GEN_6 | csa1Sum[38:0] & _GEN_6, 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :67:16, :76:50, :81:25, :87:17
-      row2S2 <= csa2Sum ^ {csa2Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_7[24:0], 14'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :46:21, :68:{16,22,37}, :77:50, :82:25
-      row3S2 <= {csa2Sum[38:0] & _GEN_7 | _GEN_7 & _GEN_8 | csa2Sum[38:0] & _GEN_8, 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :68:16, :77:50, :83:25, :89:17
-      validS2 <= validS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :84:25
-      productS3 <= _comp42_io_sum[31:0] + {_comp42_io_carry[30:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :97:22, :104:36, :107:26
-      validS3 <= validS2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:84:25, :108:26
+        _GEN_2 & _GEN_3 | _GEN_3 & _GEN_4 | _GEN_2 & _GEN_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:45:22, :46:16, :47:16
+      automatic logic [38:0] _GEN_5 = {csa1Carry[37:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50
+      automatic logic [38:0] _GEN_6 = {_ppGen_io_pp_6[26:0], 12'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :48:{16,22,37}
+      automatic logic [38:0] _GEN_7 = {csa2Carry[37:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50, :55:50
+      automatic logic [38:0] _GEN_8 = {_ppGen_io_pp_7[24:0], 14'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :49:{16,22,37}
+      row0S1 <= csa1Sum ^ {csa1Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_6[26:0], 12'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :48:{16,22,37}, :54:50, :58:25
+      row1S1 <= {csa1Sum[38:0] & _GEN_5 | _GEN_5 & _GEN_6 | csa1Sum[38:0] & _GEN_6, 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:48:16, :54:50, :59:25, :65:17
+      row2S1 <= csa2Sum ^ {csa2Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_7[24:0], 14'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:35, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21, :49:{16,22,37}, :54:50, :55:50, :60:25
+      row3S1 <= {csa2Sum[38:0] & _GEN_7 | _GEN_7 & _GEN_8 | csa2Sum[38:0] & _GEN_8, 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/common/Compressors.scala:24:23, :25:{20,30,35,40}, Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:49:16, :54:50, :55:50, :61:25, :67:17
+      validS1 <= io_validIn;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:62:25
+      productS2 <= _comp42_io_sum[31:0] + {_comp42_io_carry[30:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50, :75:22, :82:36, :85:26
+      validS2 <= validS1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:62:25, :86:26
     end
   end // always @(posedge, posedge)
-  `ifdef ENABLE_INITIAL_REG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-      `FIRRTL_BEFORE_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
+  `ifdef ENABLE_INITIAL_REG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+      `FIRRTL_BEFORE_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
     `endif // FIRRTL_BEFORE_INITIAL
-    initial begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-      automatic logic [31:0] _RANDOM[0:7];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-      `ifdef INIT_RANDOM_PROLOG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-        `INIT_RANDOM_PROLOG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
+    initial begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+      automatic logic [31:0] _RANDOM[0:6];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+      `ifdef INIT_RANDOM_PROLOG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+        `INIT_RANDOM_PROLOG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-        for (logic [3:0] i = 4'h0; i < 4'h8; i += 4'h1) begin
-          _RANDOM[i[2:0]] = `RANDOM;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-        end	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-        negS1 = _RANDOM[3'h0][7:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :33:24
-        zeroS1 = _RANDOM[3'h0][15:8];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :33:24, :34:24
-        twoS1 = _RANDOM[3'h0][23:16];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :33:24, :35:24
-        aS1 = {_RANDOM[3'h0][31:24], _RANDOM[3'h1][7:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :33:24, :36:24
-        validS1 = _RANDOM[3'h1][8];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :36:24, :37:24
-        row0S2 = {_RANDOM[3'h1][31:9], _RANDOM[3'h2][16:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :36:24, :80:25
-        row1S2 = {_RANDOM[3'h2][31:17], _RANDOM[3'h3][24:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :80:25, :81:25
-        row2S2 = {_RANDOM[3'h3][31:25], _RANDOM[3'h4], _RANDOM[3'h5][0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :81:25, :82:25
-        row3S2 = {_RANDOM[3'h5][31:1], _RANDOM[3'h6][8:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :82:25, :83:25
-        validS2 = _RANDOM[3'h6][9];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :83:25, :84:25
-        productS3 = {_RANDOM[3'h6][31:10], _RANDOM[3'h7][9:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :83:25, :107:26
-        validS3 = _RANDOM[3'h7][10];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :107:26, :108:26
+      `ifdef RANDOMIZE_REG_INIT	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+        for (logic [2:0] i = 3'h0; i < 3'h7; i += 3'h1) begin
+          _RANDOM[i] = `RANDOM;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+        end	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+        row0S1 = {_RANDOM[3'h0], _RANDOM[3'h1][7:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :58:25
+        row1S1 = {_RANDOM[3'h1][31:8], _RANDOM[3'h2][15:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :58:25, :59:25
+        row2S1 = {_RANDOM[3'h2][31:16], _RANDOM[3'h3][23:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :59:25, :60:25
+        row3S1 = {_RANDOM[3'h3][31:24], _RANDOM[3'h4]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :60:25, :61:25
+        validS1 = _RANDOM[3'h5][0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :62:25
+        productS2 = {_RANDOM[3'h5][31:1], _RANDOM[3'h6][0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :62:25, :85:26
+        validS2 = _RANDOM[3'h6][1];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :85:26, :86:26
       `endif // RANDOMIZE_REG_INIT
-      if (reset) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-        negS1 = 8'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24
-        zeroS1 = 8'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24, :34:24
-        twoS1 = 8'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24, :35:24
-        aS1 = 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:36:24
-        validS1 = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24
-        row0S2 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25
-        row1S2 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25, :81:25
-        row2S2 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25, :82:25
-        row3S2 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25, :83:25
-        validS2 = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :84:25
-        productS3 = 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:107:26
-        validS3 = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:37:24, :108:26
+      if (reset) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+        row0S1 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25
+        row1S1 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25, :59:25
+        row2S1 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25, :60:25
+        row3S1 = 40'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25, :61:25
+        validS1 = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50, :62:25
+        productS2 = 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:85:26
+        validS2 = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:54:50, :86:26
       end
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
-      `FIRRTL_AFTER_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7
+    `ifdef FIRRTL_AFTER_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
+      `FIRRTL_AFTER_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  BoothEncoder booth (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:29:21
+  BoothEncoder booth (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
     .io_b    (io_b),
     .io_neg  (_booth_io_neg),
     .io_zero (_booth_io_zero),
     .io_two  (_booth_io_two)
   );
-  PartialProductGen ppGen (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:46:21
-    .io_a    (aS1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:36:24
-    .io_neg  (negS1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:33:24
-    .io_zero (zeroS1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:34:24
-    .io_two  (twoS1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:35:24
+  PartialProductGen ppGen (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:33:21
+    .io_a    (io_a),
+    .io_neg  (_booth_io_neg),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
+    .io_zero (_booth_io_zero),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
+    .io_two  (_booth_io_two),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:29:21
     .io_pp_0 (_ppGen_io_pp_0),
     .io_pp_1 (_ppGen_io_pp_1),
     .io_pp_2 (_ppGen_io_pp_2),
@@ -910,16 +885,16 @@ module Mult16Booth(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/ex
     .io_pp_6 (_ppGen_io_pp_6),
     .io_pp_7 (_ppGen_io_pp_7)
   );
-  Compressor4to2Array comp42 (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:97:22
-    .io_a     (row0S2),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:80:25
-    .io_b     (row1S2),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:81:25
-    .io_c     (row2S2),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:82:25
-    .io_d     (row3S2),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:83:25
+  Compressor4to2Array comp42 (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:75:22
+    .io_a     (row0S1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:58:25
+    .io_b     (row1S1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:59:25
+    .io_c     (row2S1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:60:25
+    .io_d     (row3S1),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:61:25
     .io_sum   (_comp42_io_sum),
     .io_carry (_comp42_io_carry)
   );
-  assign io_product = productS3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :107:26
-  assign io_validOut = validS3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth.scala:15:7, :108:26
+  assign io_product = productS2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :85:26
+  assign io_validOut = validS2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mult16Booth2Stage.scala:15:7, :86:26
 endmodule
 
 module mac16(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7
@@ -933,119 +908,139 @@ module mac16(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Ma
          out_ready	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:17:21
 );
 
-  wire [31:0] _mult_io_product;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:54:22
-  wire        _mult_io_validOut;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:54:22
+  wire [31:0] _mult_io_product;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:56:22
+  wire        _mult_io_validOut;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:56:22
   wire        _GEN = ~rst_n;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27
-  reg  [2:0]  state;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24
-  reg  [4:0]  cnt;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24
-  reg  [15:0] shiftA;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25
-  reg  [15:0] shiftB;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25
-  reg  [23:0] accum;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25
-  reg  [23:0] prevProduct;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30
-  reg  [23:0] outShiftReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:40:30
-  reg         carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:42:27
-  reg         firstOp;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27
-  reg         modeR;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:44:27
-  reg         multValidIn;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31
-  reg  [31:0] multReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:47:31
-  wire        _multEnable_T_1 = cnt == 5'hF;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24, :50:47
-  wire        multEnable = ~(|state) & _multEnable_T_1 | (|state) & ~(state[2]);	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :50:{29,40,47,70}, :51:{14,29,38}
-  wire [24:0] addResult =
-    modeR
-      ? {1'h0, multReg[23:0]} + {1'h0, accum}
-      : {1'h0, multReg[23:0]} + {1'h0, prevProduct};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :38:25, :39:30, :44:27, :47:31, :62:29, :63:{17,41,50}, :65:{17,41,50}
-  wire        _GEN_0 = firstOp & ~modeR;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27, :44:27, :62:16, :68:18
-  wire [23:0] macResult = _GEN_0 ? multReg[23:0] : addResult[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:47:31, :62:29, :63:17, :65:17, :68:{18,42}, :69:{17,27}, :71:{17,29}
-  wire        _GEN_1 = state == 3'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :78:19
-  wire        _GEN_2 = state == 3'h2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :78:19
-  wire        _GEN_3 = state == 3'h3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :78:19
-  wire        _GEN_4 = state == 3'h4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :78:19
-  wire        _GEN_5 = ~(|state) | _GEN_1 | _GEN_2 | _GEN_3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :39:30, :50:29, :78:19
-  wire        _GEN_6 = state == 3'h5;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :78:19
+  reg  [2:0]  state;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24
+  reg  [4:0]  cnt;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24
+  reg  [15:0] shiftA;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25
+  reg  [15:0] shiftB;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25
+  reg  [23:0] accum;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25
+  reg  [23:0] prevProduct;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:30
+  reg  [23:0] outShiftReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30
+  reg         carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:41:27
+  reg         firstOp;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:42:27
+  reg         modeR;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27
+  reg         multValidIn;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:45:31
+  reg  [31:0] multReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31
+  reg         outReadyReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:49:30
+  reg         sumOutReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:50:30
+  wire        multEnable = state == 3'h1 | state == 3'h2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :53:{29,45,54}
   always @(posedge clk or posedge _GEN) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:10:21, :21:27
     if (_GEN) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:10:21, :21:27
-      state <= 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-      cnt <= 5'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24
-      shiftA <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25
-      shiftB <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :37:25
-      accum <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25
-      prevProduct <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :39:30
-      outShiftReg <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :40:30
-      carryReg <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :42:27
-      firstOp <= 1'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27
-      modeR <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :44:27
-      multValidIn <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :46:31
-      multReg <= 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:47:31
+      state <= 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+      cnt <= 5'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24
+      shiftA <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25
+      shiftB <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25, :36:25
+      accum <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25
+      prevProduct <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :38:30
+      outShiftReg <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :39:30
+      carryReg <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :41:27
+      firstOp <= 1'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:42:27
+      modeR <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :43:27
+      multValidIn <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :45:31
+      multReg <= 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31
+      outReadyReg <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :49:30
+      sumOutReg <= 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :50:30
     end
     else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:10:21
-      if (|state) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :50:29
-        automatic logic _GEN_7;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:136:18
-        automatic logic _GEN_8;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :78:19, :136:42, :138:18
-        automatic logic _GEN_9 = _GEN_1 | _GEN_2 | _GEN_3 | _GEN_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :78:19
-        _GEN_7 = cnt == 5'h16;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24, :136:18
-        _GEN_8 = _GEN_6 & _GEN_7;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :78:19, :136:{18,42}, :138:18
-        if (_GEN_1)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:19
-          state <= 3'h2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-        else if (_GEN_2)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:19
-          state <= 3'h3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-        else if (_GEN_3) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:19
-          if (_mult_io_validOut)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:54:22
-            state <= 3'h4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
+      automatic logic [24:0]     addResult;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:64:29, :65:17, :67:17
+      automatic logic            _GEN_0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:70:18
+      automatic logic [23:0]     macResult;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:70:42, :71:17, :73:17
+      automatic logic            _GEN_1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+      automatic logic            _GEN_2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:92:18
+      automatic logic            _GEN_3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+      automatic logic            _GEN_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+      automatic logic            _GEN_5;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+      automatic logic            _GEN_6;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+      automatic logic            _GEN_7;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:17, :80:19, :83:21
+      automatic logic            _GEN_8;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:140:18
+      automatic logic            _GEN_9;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24, :80:19, :140:42, :143:18
+      automatic logic [7:0][4:0] _GEN_10;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :78:17, :80:19, :92:41, :131:13, :140:42
+      addResult =
+        modeR
+          ? {1'h0, multReg[23:0]} + {1'h0, accum}
+          : {1'h0, multReg[23:0]} + {1'h0, prevProduct};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :37:25, :38:30, :43:27, :46:31, :64:29, :65:{17,41,50}, :67:{17,41,50}
+      _GEN_0 = firstOp & ~modeR;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:42:27, :43:27, :64:16, :70:18
+      macResult = _GEN_0 ? multReg[23:0] : addResult[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31, :64:29, :65:17, :67:17, :70:{18,42}, :71:{17,27}, :73:{17,29}
+      _GEN_1 = state == 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :80:19
+      _GEN_2 = cnt == 5'hF;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :92:18
+      _GEN_3 = state == 3'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :80:19
+      _GEN_4 = state == 3'h2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :80:19
+      _GEN_5 = state == 3'h3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :80:19
+      _GEN_6 = state == 3'h4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :80:19
+      _GEN_7 = _GEN_1 | _GEN_3 | _GEN_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:17, :80:19, :83:21
+      _GEN_8 = cnt == 5'h16;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :140:18
+      _GEN_9 = _GEN_6 & _GEN_8;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24, :80:19, :140:{18,42}, :143:18
+      if (_GEN_1) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+        if (_GEN_2)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:92:18
+          state <= 3'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+        shiftA <= {shiftA[14:0], inA};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25, :87:{29,36}
+        shiftB <= {shiftB[14:0], inB};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :88:{29,36}
+        modeR <= mode;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27
+        multValidIn <= _GEN_2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:45:31, :92:18
+      end
+      else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+        if (_GEN_3)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+          state <= 3'h2;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+        else if (_GEN_4) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+          if (_mult_io_validOut)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:56:22
+            state <= 3'h3;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
         end
-        else if (_GEN_4)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:19
-          state <= 3'h5;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-        else if (_GEN_8)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :78:19, :136:42, :138:18
-          state <= 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-        if (_GEN_9 | ~_GEN_6) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24, :36:25, :78:19
+        else if (_GEN_5)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+          state <= 3'h4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+        else if (_GEN_9)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24, :80:19, :140:42, :143:18
+          state <= 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+        multValidIn <= ~_GEN_3 & multValidIn;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:45:31, :80:19, :103:21
+      end
+      _GEN_10 =
+        {{cnt},
+         {cnt},
+         {cnt},
+         {_GEN_8 ? 5'h0 : cnt + 5'h1},
+         {5'h0},
+         {cnt},
+         {cnt},
+         {_GEN_2 ? 5'h0 : cnt + 5'h1}};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :78:17, :80:19, :92:{18,41}, :94:23, :98:{15,22}, :131:13, :140:{18,42}, :141:18, :153:{15,22}
+      cnt <= _GEN_10[state];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24, :33:24, :78:17, :80:19, :92:41, :131:13, :140:42
+      if (~_GEN_7) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:17, :80:19, :83:21
+        automatic logic _GEN_11;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :146:{21,32}, :147:19
+        _GEN_11 = mode == modeR;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :43:27, :146:{21,32}, :147:19
+        if (_GEN_5) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+          if (modeR) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27
+            if (_GEN_0)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:70:18
+              accum <= multReg[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :46:31, :71:27
+            else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:70:18
+              accum <= addResult[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :64:29, :65:17, :67:17, :73:29
+          end
+          else if (_GEN_0)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:70:18
+            prevProduct <= multReg[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:30, :46:31, :71:27
+          else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:70:18
+            prevProduct <= addResult[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:30, :64:29, :65:17, :67:17, :73:29
+          outShiftReg <= macResult;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :70:42, :71:17, :73:17
+          carryReg <= (~firstOp | modeR) & addResult[24] | carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:41:27, :42:27, :43:27, :64:29, :65:17, :67:17, :124:{15,24,34,46,60}, :125:20
         end
-        else if (_GEN_7)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:136:18
-          cnt <= 5'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24
-        else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:136:18
-          cnt <= cnt + 5'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24, :93:22, :142:22
-        if (_GEN_9 | ~_GEN_8) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :36:25, :37:25, :78:19, :136:42, :138:18
+        else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+          automatic logic _GEN_12;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :80:19, :140:42, :146:32
+          _GEN_12 = ~_GEN_9 | _GEN_11;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24, :37:25, :80:19, :140:42, :143:18, :146:{21,32}, :147:19
+          if (_GEN_12) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :38:30, :80:19, :140:42, :146:32
+          end
+          else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:30, :80:19, :140:42, :146:32
+            accum <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25
+            prevProduct <= 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :38:30
+          end
+          if (_GEN_6)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:80:19
+            outShiftReg <= {outShiftReg[22:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :39:30, :138:{27,39}
+          carryReg <= _GEN_12 & carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :41:27, :80:19, :140:42, :146:32
         end
-        else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :78:19
-          shiftA <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25
-          shiftB <= 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :37:25
-        end
-        multValidIn <= ~_GEN_1 & multValidIn;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31, :78:19, :98:21
+        firstOp <= ~_GEN_5 & (_GEN_9 & ~_GEN_11 | firstOp);	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:32:24, :37:25, :42:27, :80:19, :128:18, :140:42, :143:18, :146:{21,32}, :147:19, :150:21
       end
-      else begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:50:29
-        if (_multEnable_T_1) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:50:47
-          state <= 3'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-          cnt <= 5'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24
-        end
-        else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:50:47
-          cnt <= cnt + 5'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24, :93:22
-        shiftA <= {shiftA[14:0], inA};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :85:{22,29}
-        shiftB <= {shiftB[14:0], inB};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :86:{22,29}
-        modeR <= mode;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:44:27
-        multValidIn <= _multEnable_T_1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31, :50:47
+      if (_GEN_1 | _GEN_3 | ~(_GEN_4 & _mult_io_validOut)) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31, :56:22, :80:19, :109:32, :110:19
       end
-      if (_GEN_5 | ~(_GEN_4 & modeR)) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :39:30, :44:27, :78:19, :116:33
-      end
-      else if (_GEN_0)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:68:18
-        accum <= multReg[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :47:31, :69:27
-      else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:68:18
-        accum <= addResult[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :62:29, :63:17, :65:17, :71:29
-      if (_GEN_5 | ~(_GEN_4 & ~modeR)) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :44:27, :62:16, :78:19, :116:33, :117:23
-      end
-      else if (_GEN_0)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:68:18
-        prevProduct <= multReg[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :47:31, :69:27
-      else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:68:18
-        prevProduct <= addResult[23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :62:29, :63:17, :65:17, :71:29
-      if (~_GEN_5) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :42:27, :78:19
-        if (_GEN_4)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:19
-          outShiftReg <= macResult;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:40:30, :68:42, :69:17, :71:17
-        else if (_GEN_6)	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:78:19
-          outShiftReg <= {outShiftReg[22:0], 1'h0};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :40:30, :133:{27,39}
-      end
-      carryReg <= ~_GEN_5 & _GEN_4 & (~firstOp | modeR) & addResult[24] | carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :42:27, :43:27, :44:27, :62:29, :63:17, :65:17, :78:19, :122:{15,24,46}
-      firstOp <= (_GEN_5 | ~_GEN_4) & firstOp;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :43:27, :78:19, :126:18
-      if (~(|state) | _GEN_1 | _GEN_2 | ~(_GEN_3 & _mult_io_validOut)) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24, :47:31, :50:29, :54:22, :78:19, :107:32, :108:19
-      end
-      else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:47:31, :78:19
-        multReg <= _mult_io_product;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:47:31, :54:22
+      else	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31, :80:19
+        multReg <= _mult_io_product;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31, :56:22
+      outReadyReg <= ~_GEN_7 & (_GEN_5 | _GEN_6 & ~_GEN_8);	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :42:27, :49:30, :77:17, :78:17, :80:19, :82:21, :83:21, :129:21, :136:21, :140:{18,42}, :142:23
+      sumOutReg <= ~_GEN_7 & (_GEN_5 ? macResult[23] : _GEN_6 & outShiftReg[22]);	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:39:30, :50:30, :70:42, :71:17, :73:17, :78:17, :80:19, :83:21, :130:{21,33}, :137:{21,35}
     end
   end // always @(posedge, posedge)
   `ifdef ENABLE_INITIAL_REG_	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7
@@ -1061,49 +1056,53 @@ module mac16(	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Ma
         for (logic [2:0] i = 3'h0; i < 3'h5; i += 3'h1) begin
           _RANDOM[i] = `RANDOM;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7
         end	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7
-        state = _RANDOM[3'h0][2:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-        cnt = _RANDOM[3'h0][7:3];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :34:24
-        shiftA = _RANDOM[3'h0][23:8];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :36:25
-        shiftB = {_RANDOM[3'h0][31:24], _RANDOM[3'h1][7:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24, :37:25
-        accum = _RANDOM[3'h1][31:8];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :37:25, :38:25
-        prevProduct = _RANDOM[3'h2][23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30
-        outShiftReg = {_RANDOM[3'h2][31:24], _RANDOM[3'h3][15:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :40:30
-        carryReg = _RANDOM[3'h3][16];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :40:30, :42:27
-        firstOp = _RANDOM[3'h3][17];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :40:30, :43:27
-        modeR = _RANDOM[3'h3][18];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :40:30, :44:27
-        multValidIn = _RANDOM[3'h3][19];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :40:30, :46:31
-        multReg = {_RANDOM[3'h3][31:20], _RANDOM[3'h4][19:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :40:30, :47:31
+        state = _RANDOM[3'h0][2:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+        cnt = _RANDOM[3'h0][7:3];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :33:24
+        shiftA = _RANDOM[3'h0][23:8];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :35:25
+        shiftB = {_RANDOM[3'h0][31:24], _RANDOM[3'h1][7:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24, :36:25
+        accum = _RANDOM[3'h1][31:8];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :36:25, :37:25
+        prevProduct = _RANDOM[3'h2][23:0];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :38:30
+        outShiftReg = {_RANDOM[3'h2][31:24], _RANDOM[3'h3][15:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :38:30, :39:30
+        carryReg = _RANDOM[3'h3][16];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :41:27
+        firstOp = _RANDOM[3'h3][17];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :42:27
+        modeR = _RANDOM[3'h3][18];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :43:27
+        multValidIn = _RANDOM[3'h3][19];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :45:31
+        multReg = {_RANDOM[3'h3][31:20], _RANDOM[3'h4][19:0]};	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :46:31
+        outReadyReg = _RANDOM[3'h4][20];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :46:31, :49:30
+        sumOutReg = _RANDOM[3'h4][21];	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :46:31, :50:30
       `endif // RANDOMIZE_REG_INIT
       if (_GEN) begin	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :21:27
-        state = 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :33:24
-        cnt = 5'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:34:24
-        shiftA = 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25
-        shiftB = 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :37:25
-        accum = 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25
-        prevProduct = 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :39:30
-        outShiftReg = 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:38:25, :40:30
-        carryReg = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :42:27
-        firstOp = 1'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:43:27
-        modeR = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :44:27
-        multValidIn = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :46:31
-        multReg = 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:47:31
+        state = 3'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :32:24
+        cnt = 5'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:33:24
+        shiftA = 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25
+        shiftB = 16'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25, :36:25
+        accum = 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25
+        prevProduct = 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :38:30
+        outShiftReg = 24'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:37:25, :39:30
+        carryReg = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :41:27
+        firstOp = 1'h1;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:42:27
+        modeR = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :43:27
+        multValidIn = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :45:31
+        multReg = 32'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31
+        outReadyReg = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :49:30
+        sumOutReg = 1'h0;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27, :50:30
       end
     end // initial
     `ifdef FIRRTL_AFTER_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7
       `FIRRTL_AFTER_INITIAL	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  Mult16Booth mult (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:54:22
+  Mult16Booth2Stage mult (	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:56:22
     .clock       (clk),
     .reset       (_GEN),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:21:27
-    .io_a        (multEnable ? shiftA : 16'h0),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :50:70, :55:27
-    .io_b        (multEnable ? shiftB : 16'h0),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:36:25, :37:25, :50:70, :56:27
-    .io_validIn  (multValidIn),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:46:31
+    .io_a        (multEnable ? shiftA : 16'h0),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25, :53:45, :57:27
+    .io_b        (multEnable ? shiftB : 16'h0),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:35:25, :36:25, :53:45, :58:27
+    .io_validIn  (multValidIn),	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:45:31
     .io_product  (_mult_io_product),
     .io_validOut (_mult_io_validOut)
   );
-  assign sum_out = ~_GEN_5 & (_GEN_4 ? macResult[23] : _GEN_6 & outShiftReg[22]);	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :40:30, :42:27, :68:42, :69:17, :71:17, :75:15, :78:19, :81:19, :128:{19,31}, :134:{19,33}
-  assign carry = carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :42:27
-  assign out_ready = ~_GEN_5 & _GEN_4;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :39:30, :42:27, :76:15, :78:19, :80:19
+  assign sum_out = sumOutReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :50:30
+  assign carry = carryReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :41:27
+  assign out_ready = outReadyReg;	// Volumes/disk/work/ysyx/mac/chisel/src/main/scala/mac16/exp_d/Mac16.scala:9:7, :49:30
 endmodule
 

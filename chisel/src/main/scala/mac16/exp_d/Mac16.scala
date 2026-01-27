@@ -26,9 +26,8 @@ class Mac16 extends RawModule {
     val sInput       = 0.U(3.W)
     val sMultStage1  = 1.U(3.W)
     val sMultStage2  = 2.U(3.W)
-    val sMultStage3  = 3.U(3.W)
-    val sAdd         = 4.U(3.W)
-    val sOutput      = 5.U(3.W)
+    val sAdd         = 3.U(3.W)
+    val sOutput      = 4.U(3.W)
 
     val state = RegInit(sInput)
     val cnt   = RegInit(0.U(5.W))
@@ -45,13 +44,16 @@ class Mac16 extends RawModule {
 
     val multValidIn  = RegInit(false.B)
     val multReg      = RegInit(0.U(32.W))
+    
+    // Output registers (must be registered to match original RTL timing)
+    val outReadyReg = RegInit(false.B)
+    val sumOutReg   = RegInit(false.B)
 
-    // Operand isolation
-    val multEnable = (state === sInput && cnt === (inputBits - 1).U) ||
-      (state >= sMultStage1 && state <= sMultStage3)
+    // Operand isolation - only enable multiplier during mult stages
+    val multEnable = (state === sMultStage1 || state === sMultStage2)
 
-    // Structural Booth multiplier
-    val mult = Module(new Mult16Booth)
+    // 2-stage pipeline Booth multiplier (matches original RTL's 2-cycle latency)
+    val mult = Module(new Mult16Booth2Stage)
     mult.io.a       := Mux(multEnable, shiftA, 0.U)
     mult.io.b       := Mux(multEnable, shiftB, 0.U)
     mult.io.validIn := multValidIn
@@ -71,21 +73,24 @@ class Mac16 extends RawModule {
       macResult := addResult(23, 0)
     }
 
-    // Default outputs
-    sum_out   := false.B
-    out_ready := false.B
+    // Default output register updates
+    outReadyReg := false.B
+    sumOutReg   := false.B
 
     switch(state) {
       is(sInput) {
-        out_ready := false.B
-        sum_out   := false.B
+        outReadyReg := false.B
+        sumOutReg   := false.B
         modeR       := mode
         multValidIn := false.B
 
-        shiftA := Cat(shiftA(inputBits - 2, 0), inA)
-        shiftB := Cat(shiftB(inputBits - 2, 0), inB)
+        val shiftANext = Cat(shiftA(inputBits - 2, 0), inA)
+        val shiftBNext = Cat(shiftB(inputBits - 2, 0), inB)
+        shiftA := shiftANext
+        shiftB := shiftBNext
 
         when(cnt === (inputBits - 1).U) {
+          // shiftA/shiftB will have the complete value after this clock edge
           cnt         := 0.U
           state       := sMultStage1
           multValidIn := true.B
@@ -100,10 +105,7 @@ class Mac16 extends RawModule {
       }
 
       is(sMultStage2) {
-        state := sMultStage3
-      }
-
-      is(sMultStage3) {
+        // Wait for multiplier pipeline to complete (2-stage: validOut on this cycle)
         when(mult.io.validOut) {
           multReg := mult.io.product
           state := sAdd
@@ -124,26 +126,38 @@ class Mac16 extends RawModule {
         }
 
         firstOp  := false.B
-        out_ready := true.B
-        sum_out   := macResult(outputBits - 1)
+        outReadyReg := true.B
+        sumOutReg   := macResult(outputBits - 1)
+        cnt := 0.U
         state := sOutput
       }
 
       is(sOutput) {
+        outReadyReg := true.B
+        sumOutReg   := outShiftReg(outputBits - 2)
         outShiftReg := Cat(outShiftReg(outputBits - 2, 0), 0.U(1.W))
-        sum_out   := outShiftReg(outputBits - 2)
 
         when(cnt === (outputBits - 2).U) {
           cnt    := 0.U
+          outReadyReg := false.B  // Set out_ready low (registered output like original RTL)
           state  := sInput
-          shiftA := 0.U
-          shiftB := 0.U
+          // Note: Do NOT clear shiftA/shiftB here - original RTL doesn't do this
+
+          when(mode =/= modeR) {
+            accum := 0.U
+            prevProduct := 0.U
+            carryReg := false.B
+            firstOp := true.B
+          }
         }.otherwise {
           cnt := cnt + 1.U
         }
       }
     }
 
-    carry := carryReg
+    // Connect output registers to ports
+    out_ready := outReadyReg
+    sum_out   := sumOutReg
+    carry     := carryReg
   }
 }
