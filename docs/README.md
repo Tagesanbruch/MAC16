@@ -37,3 +37,7 @@ To run STA:
 ```bash
 make sta
 ```
+
+## Recent Notes
+
+- 2026-02-01: SA4x4 PPA/验证计划与讨论纪要: [docs/2026-02-01-sa4x4-ppa-verify-plan.md](docs/2026-02-01-sa4x4-ppa-verify-plan.md)
