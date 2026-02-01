@@ -1,14 +1,14 @@
 `timescale 1ns/1ps
 //============================================================================
-// Experiment P: MAC16 with Output Logic Optimization
+// Experiment Q: MAC16 with 8-Stage Hyper-Pipeline
 // 
-// Key Innovation: Pipeline the VMA result to break critical path
-// - Based on Exp O (7-stage multiplier)
-// - Add S_VMA state to register VMA result before output shift
-// - Reduces combinational depth in output path
+// Key Innovation: VMA isolation inside 8-stage multiplier
+// - Multiplier outputs BINARY result (not carry-save)
+// - VMA computation is pipelined inside multiplier (Stage 7)
+// - mac16 FSM simplified - no need for S_VMA state
 //
-// Pipeline latency: 7 cycles multiplier + 1 cycle VMA = effective 8 cycle
-// Total latency: 16 (input) + 8 (mult+vma) + 24 (output) = 48 cycles
+// Pipeline latency: 8 cycles (multiplier)
+// Total latency: 16 (input) + 8 (mult) + 24 (output) = 48 cycles
 //============================================================================
 module mac16 (
     input  logic        clk,
@@ -25,24 +25,20 @@ module mac16 (
     localparam OUTPUT_BITS = 24;
     localparam ACC_WIDTH   = 40;
 
-    // State machine - added S_VMA state
+    // State machine (no S_VMA needed - VMA is inside multiplier)
     localparam S_INPUT     = 2'd0;
     localparam S_MULT_WAIT = 2'd1;
-    localparam S_VMA       = 2'd2;  // NEW: VMA pipeline stage
-    localparam S_OUTPUT    = 2'd3;
+    localparam S_OUTPUT    = 2'd2;
 
     logic [1:0] state;
     
     logic [4:0] cnt;
     logic [INPUT_BITS-1:0] shift_a, shift_b;
     
-    // DCS Accumulator: kept in carry-save form!
-    logic [ACC_WIDTH-1:0] acc_sum;
-    logic [ACC_WIDTH-1:0] acc_carry;
-    
-    // Previous product for mode=0 (also in CS form)
-    logic [ACC_WIDTH-1:0] prev_sum;
-    logic [ACC_WIDTH-1:0] prev_carry;
+    // Accumulator (kept in binary - VMA done inside mult)
+    logic [ACC_WIDTH-1:0] acc;
+    // Previous product for mode=0 
+    logic [ACC_WIDTH-1:0] prev_product;
     
     logic [OUTPUT_BITS-1:0] out_shift_reg;
     logic carry_reg;
@@ -52,32 +48,18 @@ module mac16 (
     // Multiplier interface
     logic [INPUT_BITS-1:0] mult_in_a, mult_in_b;
     logic mult_input_valid;
-    logic [ACC_WIDTH-1:0] mult_result_sum, mult_result_carry;
+    logic [ACC_WIDTH-1:0] mult_result;
     logic mult_valid_out;
     
-    // VMA pipeline registers (NEW)
-    logic [ACC_WIDTH-1:0] vma_sum_reg, vma_carry_reg;
-    logic vma_valid_reg;
+    // Feedback to multiplier - need to convert binary back to CS for feedback
+    // For simplicity, acc_sum = acc, acc_carry = 0
+    wire [ACC_WIDTH-1:0] feedback_sum, feedback_carry;
     
-    // Feedback to multiplier (selected based on mode)
-    logic [ACC_WIDTH-1:0] feedback_sum, feedback_carry;
-    
-    // Select feedback based on mode
-    always_comb begin
-        if (first_op) begin
-            feedback_sum   = '0;
-            feedback_carry = '0;
-        end else if (mode_r == 1'b0) begin
-            feedback_sum   = prev_sum;
-            feedback_carry = prev_carry;
-        end else begin
-            feedback_sum   = acc_sum;
-            feedback_carry = acc_carry;
-        end
-    end
+    assign feedback_sum = first_op ? '0 : (mode_r ? acc : prev_product);
+    assign feedback_carry = '0;
 
-    // 7-Stage Super-Deep Pipeline Multiplier with DCS feedback
-    mult16_booth_7stage u_mult (
+    // 8-Stage Hyper-Pipeline Multiplier with VMA inside
+    mult16_booth_8stage u_mult (
         .clk(clk),
         .rst_n(rst_n),
         .a(mult_in_a),
@@ -85,15 +67,13 @@ module mac16 (
         .valid_in(mult_input_valid),
         .acc_sum_in(feedback_sum),
         .acc_carry_in(feedback_carry),
-        .result_sum(mult_result_sum),
-        .result_carry(mult_result_carry),
+        .result(mult_result),
         .valid_out(mult_valid_out)
     );
     
-    // VMA: Vector Merging Adder - now computed in S_VMA state
-    wire [ACC_WIDTH-1:0] vma_result = vma_sum_reg + vma_carry_reg;
-    wire [OUTPUT_BITS-1:0] mac_result = vma_result[OUTPUT_BITS-1:0];
-    wire vma_overflow = vma_result[OUTPUT_BITS];
+    // MAC result directly from multiplier (already in binary)
+    wire [OUTPUT_BITS-1:0] mac_result = mult_result[OUTPUT_BITS-1:0];
+    wire mac_overflow = mult_result[OUTPUT_BITS];
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -104,22 +84,16 @@ module mac16 (
             mult_in_a <= '0;
             mult_in_b <= '0;
             mult_input_valid <= 1'b0;
-            acc_sum <= '0;
-            acc_carry <= '0;
-            prev_sum <= '0;
-            prev_carry <= '0;
+            acc <= '0;
+            prev_product <= '0;
             out_shift_reg <= '0;
             carry_reg <= 1'b0;
             first_op <= 1'b1;
             mode_r <= 1'b0;
             sum_out <= 1'b0;
             out_ready <= 1'b0;
-            vma_sum_reg <= '0;
-            vma_carry_reg <= '0;
-            vma_valid_reg <= 1'b0;
         end else begin
             mult_input_valid <= 1'b0;
-            vma_valid_reg <= 1'b0;
             
             case (state)
                 S_INPUT: begin
@@ -144,37 +118,25 @@ module mac16 (
 
                 S_MULT_WAIT: begin
                     if (mult_valid_out) begin
-                        // Store accumulator results (CS form)
+                        // Store results (binary form)
                         if (mode_r == 1'b0) begin
-                            prev_sum   <= mult_result_sum;
-                            prev_carry <= mult_result_carry;
+                            prev_product <= mult_result;
                         end else begin
-                            acc_sum   <= mult_result_sum;
-                            acc_carry <= mult_result_carry;
+                            acc <= mult_result;
                         end
                         
-                        // Pipeline VMA inputs (NEW: break critical path)
-                        vma_sum_reg <= mult_result_sum;
-                        vma_carry_reg <= mult_result_carry;
-                        vma_valid_reg <= 1'b1;
+                        // Load output shift register directly
+                        out_shift_reg <= mac_result;
+                        
+                        if (!first_op && mac_overflow) begin
+                            carry_reg <= 1'b1;
+                        end
                         
                         first_op <= 1'b0;
-                        state <= S_VMA;
+                        out_ready <= 1'b1;
+                        sum_out <= mac_result[OUTPUT_BITS-1];
+                        state <= S_OUTPUT;
                     end
-                end
-
-                S_VMA: begin
-                    // VMA computation happens combinationally on registered inputs
-                    // Load output shift register from VMA result
-                    out_shift_reg <= mac_result;
-                    
-                    if (!first_op && vma_overflow) begin
-                        carry_reg <= 1'b1;
-                    end
-                    
-                    out_ready <= 1'b1;
-                    sum_out <= mac_result[OUTPUT_BITS-1];
-                    state <= S_OUTPUT;
                 end
 
                 S_OUTPUT: begin

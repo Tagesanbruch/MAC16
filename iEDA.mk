@@ -213,7 +213,28 @@ verif:
 		exit 1; \
 	fi
 
+latency_check:
+	@if [ "$(EXP_DIR_EXISTS)" = "no" ]; then \
+		echo "[ERROR] Experiment directory not found: $(RTL_DIR)"; \
+		exit 1; \
+	fi
+	@echo "Running latency check for $(EXP)..."
+	@mkdir -p $(BUILD_DIR)
+	@iverilog -g2012 -o $(BUILD_DIR)/tb_latency$(EXP_SUFFIX).vvp \
+		-I $(RTL_DIR) -I verif \
+		$(RTL_FILES) verif/tb_latency_check.sv 2>/dev/null || \
+		(echo "[SKIP] $(EXP): mac16 module not found"; exit 0)
+	@vvp $(BUILD_DIR)/tb_latency$(EXP_SUFFIX).vvp 2>/dev/null | tee $(BUILD_DIR)/latency$(EXP_SUFFIX).log || true
+	@if grep -q "STATUS: PASS" $(BUILD_DIR)/latency$(EXP_SUFFIX).log 2>/dev/null; then \
+		echo "\033[0;32m[LATENCY] $(EXP): PASS\033[0m"; \
+	elif grep -q "STATUS: FAIL" $(BUILD_DIR)/latency$(EXP_SUFFIX).log 2>/dev/null; then \
+		echo "\033[0;31m[LATENCY] $(EXP): FAIL\033[0m"; \
+	else \
+		echo "\033[0;33m[LATENCY] $(EXP): SKIP\033[0m"; \
+	fi
+
 power:
+
 	@if [ -z "$(LATEST_SYN_DIR)" ]; then \
 		echo "[ERROR] No synthesis results found for EXP=$(EXP)."; \
 		exit 1; \

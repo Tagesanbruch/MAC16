@@ -1,0 +1,669 @@
+`timescale 1ns/1ps
+//============================================================================
+// Radix-4 Booth Encoder
+// Generates encoding signals for 8 partial products from 16-bit input B
+//
+// Booth recoding reduces partial products from 16 to 8
+// Encoding: examines groups of 3 bits (b[2i+1], b[2i], b[2i-1])
+//============================================================================
+module booth_encoder (
+    input  logic [15:0] b,
+    output logic [7:0]  neg,    // Negate partial product
+    output logic [7:0]  zero,   // Zero partial product
+    output logic [7:0]  two     // Double partial product
+);
+
+    // Extended B with implicit -1 bit = 0
+    wire [16:0] b_ext = {b, 1'b0};
+    
+    // Generate 8 Booth encodings
+    // Each group examines bits: b[2i+1], b[2i], b[2i-1]
+    genvar i;
+    generate
+        for (i = 0; i < 8; i = i + 1) begin : booth_gen
+            wire [2:0] group = b_ext[2*i+2 : 2*i];
+            
+            // Booth decoding truth table:
+            // group | action | neg | zero | two
+            // 000   |   0    |  0  |   1  |  0
+            // 001   |  +1    |  0  |   0  |  0
+            // 010   |  +1    |  0  |   0  |  0
+            // 011   |  +2    |  0  |   0  |  1
+            // 100   |  -2    |  1  |   0  |  1
+            // 101   |  -1    |  1  |   0  |  0
+            // 110   |  -1    |  1  |   0  |  0
+            // 111   |   0    |  0  |   1  |  0
+            
+            assign neg[i]  = group[2];
+            assign zero[i] = (group == 3'b000) || (group == 3'b111);
+            assign two[i]  = (group == 3'b011) || (group == 3'b100);
+        end
+    endgenerate
+
+endmodule
+`timescale 1ns/1ps
+//============================================================================
+// 4:2 Compressor
+// Compresses 4 input bits + carry_in to 2 output bits (sum, carry) + carry_out
+//
+// Critical path: ~3 XOR gate delays
+// Truth: Cout = majority(A,B,C), S = A^B^C^D^Cin, C = D^Cin ? (A^B^C) : D
+//============================================================================
+module compressor_4to2 (
+    input  logic a,
+    input  logic b,
+    input  logic c,
+    input  logic d,
+    input  logic cin,
+    output logic sum,
+    output logic carry,
+    output logic cout
+);
+
+    wire w1 = a ^ b;
+    wire w2 = c ^ d;
+    wire w3 = w1 ^ w2;
+    
+    // Carry out - does not depend on cin (critical for timing)
+    assign cout = w1 ? c : a;
+    
+    // Sum
+    assign sum = w3 ^ cin;
+    
+    // Carry - depends on cin
+    assign carry = w3 ? cin : d;
+
+endmodule
+
+//============================================================================
+// N-bit 4:2 Compressor Array
+//============================================================================
+module compressor_4to2_array #(
+    parameter WIDTH = 32
+)(
+    input  logic [WIDTH-1:0] a,
+    input  logic [WIDTH-1:0] b,
+    input  logic [WIDTH-1:0] c,
+    input  logic [WIDTH-1:0] d,
+    output logic [WIDTH-1:0] sum,
+    output logic [WIDTH-1:0] carry
+);
+
+    logic [WIDTH:0] cout_chain;
+    assign cout_chain[0] = 1'b0;
+    
+    genvar i;
+    generate
+        for (i = 0; i < WIDTH; i = i + 1) begin : comp_gen
+            compressor_4to2 u_comp (
+                .a(a[i]),
+                .b(b[i]),
+                .c(c[i]),
+                .d(d[i]),
+                .cin(cout_chain[i]),
+                .sum(sum[i]),
+                .carry(carry[i]),
+                .cout(cout_chain[i+1])
+            );
+        end
+    endgenerate
+
+endmodule
+`timescale 1ns/1ps
+//============================================================================
+// Carry Save Adder (3:2 Compressor / Full Adder)
+// Basic building block for Wallace/Dadda trees
+//============================================================================
+module csa #(
+    parameter WIDTH = 32
+)(
+    input  logic [WIDTH-1:0] a,
+    input  logic [WIDTH-1:0] b,
+    input  logic [WIDTH-1:0] c,
+    output logic [WIDTH-1:0] sum,
+    output logic [WIDTH-1:0] carry
+);
+
+    assign sum   = a ^ b ^ c;
+    assign carry = (a & b) | (b & c) | (a & c);
+
+endmodule
+`timescale 1ns/1ps
+//============================================================================
+// Experiment O: MAC16 with 7-Stage Super-Deep Pipeline
+// 
+// Key Innovation: Deeper pipeline than Exp N (7 vs 5 stages)
+// - Additional pipeline cuts to reduce logic depth per stage
+// - Same DCS accumulator approach (sum + carry vectors)
+// - Target: SS corner further improvement via reduced combinational depth
+//
+// Pipeline latency: 7 cycles (vs 5 for Exp N)
+// Total latency: 16 (input) + 7 (mult) + 24 (output) = 47 cycles
+//============================================================================
+module mac16 (
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic        mode,
+    input  logic        inA,
+    input  logic        inB,
+    output logic        sum_out,
+    output logic        carry,
+    output logic        out_ready
+);
+
+    localparam INPUT_BITS  = 16;
+    localparam OUTPUT_BITS = 24;
+    localparam ACC_WIDTH   = 40;
+
+    // State machine
+    localparam S_INPUT     = 2'd0;
+    localparam S_MULT_WAIT = 2'd1;
+    localparam S_OUTPUT    = 2'd2;
+
+    logic [1:0] state;
+    
+    logic [4:0] cnt;
+    logic [INPUT_BITS-1:0] shift_a, shift_b;
+    
+    // DCS Accumulator: kept in carry-save form!
+    logic [ACC_WIDTH-1:0] acc_sum;
+    logic [ACC_WIDTH-1:0] acc_carry;
+    
+    // Previous product for mode=0 (also in CS form)
+    logic [ACC_WIDTH-1:0] prev_sum;
+    logic [ACC_WIDTH-1:0] prev_carry;
+    
+    logic [OUTPUT_BITS-1:0] out_shift_reg;
+    logic carry_reg;
+    logic first_op;
+    logic mode_r;
+
+    // Multiplier interface
+    logic [INPUT_BITS-1:0] mult_in_a, mult_in_b;
+    logic mult_input_valid;
+    logic [ACC_WIDTH-1:0] mult_result_sum, mult_result_carry;
+    logic mult_valid_out;
+    
+    // Feedback to multiplier (selected based on mode)
+    logic [ACC_WIDTH-1:0] feedback_sum, feedback_carry;
+    
+    // Select feedback based on mode
+    always_comb begin
+        if (first_op) begin
+            feedback_sum   = '0;
+            feedback_carry = '0;
+        end else if (mode_r == 1'b0) begin
+            feedback_sum   = prev_sum;
+            feedback_carry = prev_carry;
+        end else begin
+            feedback_sum   = acc_sum;
+            feedback_carry = acc_carry;
+        end
+    end
+
+    // 7-Stage Super-Deep Pipeline Multiplier with DCS feedback
+    mult16_booth_7stage u_mult (
+        .clk(clk),
+        .rst_n(rst_n),
+        .a(mult_in_a),
+        .b(mult_in_b),
+        .valid_in(mult_input_valid),
+        .acc_sum_in(feedback_sum),
+        .acc_carry_in(feedback_carry),
+        .result_sum(mult_result_sum),
+        .result_carry(mult_result_carry),
+        .valid_out(mult_valid_out)
+    );
+    
+    // VMA: Vector Merging Adder - only used during output
+    wire [ACC_WIDTH-1:0] vma_result = mult_result_sum + mult_result_carry;
+    wire [OUTPUT_BITS-1:0] mac_result = vma_result[OUTPUT_BITS-1:0];
+    wire vma_overflow = vma_result[OUTPUT_BITS];
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state <= S_INPUT;
+            cnt <= '0;
+            shift_a <= '0;
+            shift_b <= '0;
+            mult_in_a <= '0;
+            mult_in_b <= '0;
+            mult_input_valid <= 1'b0;
+            acc_sum <= '0;
+            acc_carry <= '0;
+            prev_sum <= '0;
+            prev_carry <= '0;
+            out_shift_reg <= '0;
+            carry_reg <= 1'b0;
+            first_op <= 1'b1;
+            mode_r <= 1'b0;
+            sum_out <= 1'b0;
+            out_ready <= 1'b0;
+        end else begin
+            mult_input_valid <= 1'b0;
+            
+            case (state)
+                S_INPUT: begin
+                    out_ready <= 1'b0;
+                    sum_out <= 1'b0;
+                    mode_r <= mode;
+
+                    shift_a <= {shift_a[INPUT_BITS-2:0], inA};
+                    shift_b <= {shift_b[INPUT_BITS-2:0], inB};
+
+                    if (cnt == INPUT_BITS - 1) begin
+                        cnt <= '0;
+                        state <= S_MULT_WAIT;
+                        
+                        mult_in_a <= {shift_a[INPUT_BITS-2:0], inA};
+                        mult_in_b <= {shift_b[INPUT_BITS-2:0], inB};
+                        mult_input_valid <= 1'b1;
+                    end else begin
+                        cnt <= cnt + 1'b1;
+                    end
+                end
+
+                S_MULT_WAIT: begin
+                    if (mult_valid_out) begin
+                        if (mode_r == 1'b0) begin
+                            prev_sum   <= mult_result_sum;
+                            prev_carry <= mult_result_carry;
+                        end else begin
+                            acc_sum   <= mult_result_sum;
+                            acc_carry <= mult_result_carry;
+                        end
+                        
+                        out_shift_reg <= mac_result;
+                        
+                        if (!first_op && vma_overflow) begin
+                            carry_reg <= 1'b1;
+                        end
+                        
+                        first_op <= 1'b0;
+                        out_ready <= 1'b1;
+                        sum_out <= mac_result[OUTPUT_BITS-1];
+                        state <= S_OUTPUT;
+                    end
+                end
+
+                S_OUTPUT: begin
+                    out_shift_reg <= {out_shift_reg[OUTPUT_BITS-2:0], 1'b0};
+                    sum_out <= out_shift_reg[OUTPUT_BITS-2];
+
+                    if (cnt == OUTPUT_BITS - 2) begin
+                        cnt <= '0;
+                        state <= S_INPUT;
+                        shift_a <= '0;
+                        shift_b <= '0;
+                    end else begin
+                        cnt <= cnt + 1'b1;
+                    end
+                end
+
+                default: state <= S_INPUT;
+            endcase
+        end
+    end
+
+    assign carry = carry_reg;
+
+endmodule
+`timescale 1ns/1ps
+//============================================================================
+// Experiment O: 7-Stage Super-Deep Pipeline Booth Multiplier
+// 
+// Key Innovation: Even deeper pipeline than Exp N with additional stage splits
+// - Stage 1: Booth Encoding
+// - Stage 2: PPG (Partial Product Generation)
+// - Stage 3: CSA Layer 1 (8→6 rows)
+// - Stage 4: CSA Layer 2 (6→4 rows) + Feedback injection
+// - Stage 5: 4:2 Compressor (6→2 rows with feedback)
+// - Stage 6: Final CSA for accumulator merge
+// - Stage 7: Output (sum, carry) - NO CPA in loop
+//
+// Target: Reduce logic depth per stage to ~8 FO4 for SS corner timing
+//============================================================================
+module mult16_booth_7stage (
+    input  wire         clk,
+    input  wire         rst_n,
+    input  wire  [15:0] a,
+    input  wire  [15:0] b,
+    input  wire         valid_in,
+    // Feedback from accumulator (carry-save form)
+    input  wire  [39:0] acc_sum_in,
+    input  wire  [39:0] acc_carry_in,
+    // Output in carry-save form (NO CPA)
+    output reg   [39:0] result_sum,
+    output reg   [39:0] result_carry,
+    output reg          valid_out
+);
+
+    //=========================================================================
+    // Stage 1: Booth Encoding
+    //=========================================================================
+    reg [7:0]  neg_s1, zero_s1, two_s1;
+    reg        valid_s1;
+    reg [15:0] a_s1;
+    reg [39:0] acc_sum_s1, acc_carry_s1;
+    
+    wire [7:0]  neg_w, zero_w, two_w;
+    booth_encoder u_booth (
+        .b(b),
+        .neg(neg_w),
+        .zero(zero_w),
+        .two(two_w)
+    );
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            neg_s1  <= 8'b0;
+            zero_s1 <= 8'b0;
+            two_s1  <= 8'b0;
+            a_s1    <= 16'b0;
+            acc_sum_s1 <= 40'b0;
+            acc_carry_s1 <= 40'b0;
+            valid_s1 <= 1'b0;
+        end else if (valid_in) begin
+            neg_s1  <= neg_w;
+            zero_s1 <= zero_w;
+            two_s1  <= two_w;
+            a_s1    <= a;
+            acc_sum_s1 <= acc_sum_in;
+            acc_carry_s1 <= acc_carry_in;
+            valid_s1 <= 1'b1;
+        end else begin
+            valid_s1 <= 1'b0;
+        end
+    end
+    
+    //=========================================================================
+    // Stage 2: PPG (Partial Product Generation) - ISOLATED STAGE
+    //=========================================================================
+    wire [32:0] pp_w0, pp_w1, pp_w2, pp_w3, pp_w4, pp_w5, pp_w6, pp_w7;
+    partial_product_gen u_ppg (
+        .a(a_s1),
+        .neg(neg_s1),
+        .zero(zero_s1),
+        .two(two_s1),
+        .pp0(pp_w0),
+        .pp1(pp_w1),
+        .pp2(pp_w2),
+        .pp3(pp_w3),
+        .pp4(pp_w4),
+        .pp5(pp_w5),
+        .pp6(pp_w6),
+        .pp7(pp_w7)
+    );
+
+    // Align partial products to 40 bits
+    wire [39:0] pp_aligned0 = {{7{pp_w0[32]}}, pp_w0};
+    wire [39:0] pp_aligned1 = {{5{pp_w1[32]}}, pp_w1, 2'b0};
+    wire [39:0] pp_aligned2 = {{3{pp_w2[32]}}, pp_w2, 4'b0};
+    wire [39:0] pp_aligned3 = {{1{pp_w3[32]}}, pp_w3, 6'b0};
+    wire [39:0] pp_aligned4 = {pp_w4[30:0], 8'b0};
+    wire [39:0] pp_aligned5 = {pp_w5[28:0], 10'b0};
+    wire [39:0] pp_aligned6 = {pp_w6[26:0], 12'b0};
+    wire [39:0] pp_aligned7 = {pp_w7[24:0], 14'b0};
+    
+    // Pipeline register - Stage 2 (PPG only, no CSA logic)
+    reg [39:0] pp0_s2, pp1_s2, pp2_s2, pp3_s2, pp4_s2, pp5_s2, pp6_s2, pp7_s2;
+    reg [39:0] acc_sum_s2, acc_carry_s2;
+    reg        valid_s2;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            pp0_s2 <= 40'b0; pp1_s2 <= 40'b0; pp2_s2 <= 40'b0; pp3_s2 <= 40'b0;
+            pp4_s2 <= 40'b0; pp5_s2 <= 40'b0; pp6_s2 <= 40'b0; pp7_s2 <= 40'b0;
+            acc_sum_s2 <= 40'b0;
+            acc_carry_s2 <= 40'b0;
+            valid_s2 <= 1'b0;
+        end else if (valid_s1) begin
+            pp0_s2 <= pp_aligned0;
+            pp1_s2 <= pp_aligned1;
+            pp2_s2 <= pp_aligned2;
+            pp3_s2 <= pp_aligned3;
+            pp4_s2 <= pp_aligned4;
+            pp5_s2 <= pp_aligned5;
+            pp6_s2 <= pp_aligned6;
+            pp7_s2 <= pp_aligned7;
+            acc_sum_s2 <= acc_sum_s1;
+            acc_carry_s2 <= acc_carry_s1;
+            valid_s2 <= 1'b1;
+        end else begin
+            valid_s2 <= 1'b0;
+        end
+    end
+
+    //=========================================================================
+    // Stage 3: CSA Layer 1 (8→6 rows)
+    //=========================================================================
+    wire [39:0] csa1_sum, csa1_carry;
+    csa #(.WIDTH(40)) u_csa1 (
+        .a(pp0_s2),
+        .b(pp1_s2),
+        .c(pp2_s2),
+        .sum(csa1_sum),
+        .carry(csa1_carry)
+    );
+    
+    wire [39:0] csa2_sum, csa2_carry;
+    csa #(.WIDTH(40)) u_csa2 (
+        .a(pp3_s2),
+        .b(pp4_s2),
+        .c(pp5_s2),
+        .sum(csa2_sum),
+        .carry(csa2_carry)
+    );
+    
+    // Pipeline register - Stage 3
+    reg [39:0] row0_s3, row1_s3, row2_s3, row3_s3, row4_s3, row5_s3;
+    reg [39:0] acc_sum_s3, acc_carry_s3;
+    reg        valid_s3;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            row0_s3 <= 40'b0; row1_s3 <= 40'b0;
+            row2_s3 <= 40'b0; row3_s3 <= 40'b0;
+            row4_s3 <= 40'b0; row5_s3 <= 40'b0;
+            acc_sum_s3 <= 40'b0;
+            acc_carry_s3 <= 40'b0;
+            valid_s3 <= 1'b0;
+        end else if (valid_s2) begin
+            row0_s3 <= csa1_sum;
+            row1_s3 <= {csa1_carry[38:0], 1'b0};
+            row2_s3 <= csa2_sum;
+            row3_s3 <= {csa2_carry[38:0], 1'b0};
+            row4_s3 <= pp6_s2;
+            row5_s3 <= pp7_s2;
+            acc_sum_s3 <= acc_sum_s2;
+            acc_carry_s3 <= acc_carry_s2;
+            valid_s3 <= 1'b1;
+        end else begin
+            valid_s3 <= 1'b0;
+        end
+    end
+
+    //=========================================================================
+    // Stage 4: CSA Layer 2 (6→4 rows) - Inject feedback here
+    //=========================================================================
+    wire [39:0] csa3_sum, csa3_carry;
+    csa #(.WIDTH(40)) u_csa3 (
+        .a(row0_s3),
+        .b(row1_s3),
+        .c(row2_s3),
+        .sum(csa3_sum),
+        .carry(csa3_carry)
+    );
+    
+    wire [39:0] csa4_sum, csa4_carry;
+    csa #(.WIDTH(40)) u_csa4 (
+        .a(row3_s3),
+        .b(row4_s3),
+        .c(row5_s3),
+        .sum(csa4_sum),
+        .carry(csa4_carry)
+    );
+    
+    // Pipeline register - Stage 4
+    reg [39:0] row0_s4, row1_s4, row2_s4, row3_s4;
+    reg [39:0] acc_sum_s4, acc_carry_s4;
+    reg        valid_s4;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            row0_s4 <= 40'b0; row1_s4 <= 40'b0;
+            row2_s4 <= 40'b0; row3_s4 <= 40'b0;
+            acc_sum_s4 <= 40'b0;
+            acc_carry_s4 <= 40'b0;
+            valid_s4 <= 1'b0;
+        end else if (valid_s3) begin
+            row0_s4 <= csa3_sum;
+            row1_s4 <= {csa3_carry[38:0], 1'b0};
+            row2_s4 <= csa4_sum;
+            row3_s4 <= {csa4_carry[38:0], 1'b0};
+            acc_sum_s4 <= acc_sum_s3;
+            acc_carry_s4 <= acc_carry_s3;
+            valid_s4 <= 1'b1;
+        end else begin
+            valid_s4 <= 1'b0;
+        end
+    end
+
+    //=========================================================================
+    // Stage 5: 4:2 Compressor + Feedback injection (6→4 rows)
+    //=========================================================================
+    wire [39:0] comp_sum, comp_carry;
+    compressor_4to2_array #(.WIDTH(40)) u_comp42 (
+        .a(row0_s4),
+        .b(row1_s4),
+        .c(row2_s4),
+        .d(row3_s4),
+        .sum(comp_sum),
+        .carry(comp_carry)
+    );
+    
+    // Now merge with feedback: comp_sum, comp_carry, acc_sum, acc_carry = 4 rows
+    // Pipeline register - Stage 5
+    reg [39:0] comp_sum_s5, comp_carry_s5;
+    reg [39:0] acc_sum_s5, acc_carry_s5;
+    reg        valid_s5;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            comp_sum_s5 <= 40'b0;
+            comp_carry_s5 <= 40'b0;
+            acc_sum_s5 <= 40'b0;
+            acc_carry_s5 <= 40'b0;
+            valid_s5 <= 1'b0;
+        end else if (valid_s4) begin
+            comp_sum_s5 <= comp_sum;
+            comp_carry_s5 <= {comp_carry[38:0], 1'b0};
+            acc_sum_s5 <= acc_sum_s4;
+            acc_carry_s5 <= acc_carry_s4;
+            valid_s5 <= 1'b1;
+        end else begin
+            valid_s5 <= 1'b0;
+        end
+    end
+
+    //=========================================================================
+    // Stage 6: Final 4:2 Compressor with feedback (4→2 rows)
+    //=========================================================================
+    wire [39:0] final_sum, final_carry;
+    compressor_4to2_array #(.WIDTH(40)) u_comp42_final (
+        .a(comp_sum_s5),
+        .b(comp_carry_s5),
+        .c(acc_sum_s5),
+        .d(acc_carry_s5),
+        .sum(final_sum),
+        .carry(final_carry)
+    );
+    
+    // Pipeline register - Stage 6 (Output in carry-save form!)
+    reg [39:0] final_sum_s6, final_carry_s6;
+    reg        valid_s6;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            final_sum_s6 <= 40'b0;
+            final_carry_s6 <= 40'b0;
+            valid_s6 <= 1'b0;
+        end else if (valid_s5) begin
+            final_sum_s6 <= final_sum;
+            final_carry_s6 <= {final_carry[38:0], 1'b0};
+            valid_s6 <= 1'b1;
+        end else begin
+            valid_s6 <= 1'b0;
+        end
+    end
+
+    //=========================================================================
+    // Stage 7: Output register
+    //=========================================================================
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            result_sum   <= 40'b0;
+            result_carry <= 40'b0;
+            valid_out <= 1'b0;
+        end else if (valid_s6) begin
+            result_sum   <= final_sum_s6;
+            result_carry <= final_carry_s6;
+            valid_out <= 1'b1;
+        end else begin
+            valid_out <= 1'b0;
+        end
+    end
+
+endmodule
+`timescale 1ns/1ps
+//============================================================================
+// Partial Product Generator for Radix-4 Booth Multiplier
+// Generates 8 partial products from 16-bit inputs A and B
+//
+// Each partial product is:
+//   - A, 2A, -A, -2A, or 0 based on Booth encoding
+//   - Sign extended to 33 bits (to handle signed multiplication)
+//============================================================================
+module partial_product_gen (
+    input  wire [15:0] a,
+    input  wire [7:0]  neg,    // Booth encoding signals
+    input  wire [7:0]  zero,
+    input  wire [7:0]  two,
+    output wire [32:0] pp0,
+    output wire [32:0] pp1,
+    output wire [32:0] pp2,
+    output wire [32:0] pp3,
+    output wire [32:0] pp4,
+    output wire [32:0] pp5,
+    output wire [32:0] pp6,
+    output wire [32:0] pp7
+);
+
+    // Extended A for 2A calculation
+    wire [16:0] a_ext  = {a[15], a};      // Sign extend A
+    wire [17:0] a_2x   = {a[15], a, 1'b0}; // 2*A (shift left)
+    
+    // Generate function for each PP
+    function [32:0] gen_pp;
+        input [17:0] a_2x_in;
+        input [16:0] a_ext_in;
+        input neg_in, zero_in, two_in;
+        reg [17:0] a_sel, a_neg, a_final;
+        begin
+            a_sel = two_in ? a_2x_in : {a_ext_in[16], a_ext_in};
+            a_neg = neg_in ? (~a_sel + 1'b1) : a_sel;
+            a_final = zero_in ? 18'd0 : a_neg;
+            gen_pp = {{15{a_final[17]}}, a_final};
+        end
+    endfunction
+    
+    assign pp0 = gen_pp(a_2x, a_ext, neg[0], zero[0], two[0]);
+    assign pp1 = gen_pp(a_2x, a_ext, neg[1], zero[1], two[1]);
+    assign pp2 = gen_pp(a_2x, a_ext, neg[2], zero[2], two[2]);
+    assign pp3 = gen_pp(a_2x, a_ext, neg[3], zero[3], two[3]);
+    assign pp4 = gen_pp(a_2x, a_ext, neg[4], zero[4], two[4]);
+    assign pp5 = gen_pp(a_2x, a_ext, neg[5], zero[5], two[5]);
+    assign pp6 = gen_pp(a_2x, a_ext, neg[6], zero[6], two[6]);
+    assign pp7 = gen_pp(a_2x, a_ext, neg[7], zero[7], two[7]);
+
+endmodule
