@@ -709,7 +709,7 @@ module Compressor4to2Array(
      _comp_io_carry};
 endmodule
 
-module Mult16Booth2Stage(
+module Mult16Booth(
   input         clock,
                 reset,
   input  [15:0] io_a,
@@ -732,13 +732,18 @@ module Mult16Booth2Stage(
   wire [7:0]  _booth_io_neg;
   wire [7:0]  _booth_io_zero;
   wire [7:0]  _booth_io_two;
-  reg  [39:0] row0S1;
-  reg  [39:0] row1S1;
-  reg  [39:0] row2S1;
-  reg  [39:0] row3S1;
+  reg  [7:0]  negS1;
+  reg  [7:0]  zeroS1;
+  reg  [7:0]  twoS1;
+  reg  [15:0] aS1;
   reg         validS1;
-  reg  [31:0] productS2;
+  reg  [39:0] row0S2;
+  reg  [39:0] row1S2;
+  reg  [39:0] row2S2;
+  reg  [39:0] row3S2;
   reg         validS2;
+  reg  [31:0] productS3;
+  reg         validS3;
   wire [39:0] csa1Sum =
     {{7{_ppGen_io_pp_0[32]}}, _ppGen_io_pp_0}
     ^ {{5{_ppGen_io_pp_1[32]}}, _ppGen_io_pp_1, 2'h0}
@@ -760,22 +765,32 @@ module Mult16Booth2Stage(
   wire [38:0] _GEN_8 = {_ppGen_io_pp_7[24:0], 14'h0};
   always @(posedge clock or posedge reset) begin
     if (reset) begin
-      row0S1 <= 40'h0;
-      row1S1 <= 40'h0;
-      row2S1 <= 40'h0;
-      row3S1 <= 40'h0;
+      negS1 <= 8'h0;
+      zeroS1 <= 8'h0;
+      twoS1 <= 8'h0;
+      aS1 <= 16'h0;
       validS1 <= 1'h0;
-      productS2 <= 32'h0;
+      row0S2 <= 40'h0;
+      row1S2 <= 40'h0;
+      row2S2 <= 40'h0;
+      row3S2 <= 40'h0;
       validS2 <= 1'h0;
+      productS3 <= 32'h0;
+      validS3 <= 1'h0;
     end
     else begin
-      row0S1 <= csa1Sum ^ {csa1Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_6[26:0], 12'h0};
-      row1S1 <= {csa1Sum[38:0] & _GEN_5 | _GEN_5 & _GEN_6 | csa1Sum[38:0] & _GEN_6, 1'h0};
-      row2S1 <= csa2Sum ^ {csa2Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_7[24:0], 14'h0};
-      row3S1 <= {csa2Sum[38:0] & _GEN_7 | _GEN_7 & _GEN_8 | csa2Sum[38:0] & _GEN_8, 1'h0};
+      negS1 <= _booth_io_neg;
+      zeroS1 <= _booth_io_zero;
+      twoS1 <= _booth_io_two;
+      aS1 <= io_a;
       validS1 <= io_validIn;
-      productS2 <= _comp42_io_sum[31:0] + {_comp42_io_carry[30:0], 1'h0};
+      row0S2 <= csa1Sum ^ {csa1Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_6[26:0], 12'h0};
+      row1S2 <= {csa1Sum[38:0] & _GEN_5 | _GEN_5 & _GEN_6 | csa1Sum[38:0] & _GEN_6, 1'h0};
+      row2S2 <= csa2Sum ^ {csa2Carry, 1'h0} ^ {1'h0, _ppGen_io_pp_7[24:0], 14'h0};
+      row3S2 <= {csa2Sum[38:0] & _GEN_7 | _GEN_7 & _GEN_8 | csa2Sum[38:0] & _GEN_8, 1'h0};
       validS2 <= validS1;
+      productS3 <= _comp42_io_sum[31:0] + {_comp42_io_carry[30:0], 1'h0};
+      validS3 <= validS2;
     end
   end // always @(posedge, posedge)
   `ifdef ENABLE_INITIAL_REG_
@@ -784,13 +799,18 @@ module Mult16Booth2Stage(
     `endif // FIRRTL_BEFORE_INITIAL
     initial begin
       if (reset) begin
-        row0S1 = 40'h0;
-        row1S1 = 40'h0;
-        row2S1 = 40'h0;
-        row3S1 = 40'h0;
+        negS1 = 8'h0;
+        zeroS1 = 8'h0;
+        twoS1 = 8'h0;
+        aS1 = 16'h0;
         validS1 = 1'h0;
-        productS2 = 32'h0;
+        row0S2 = 40'h0;
+        row1S2 = 40'h0;
+        row2S2 = 40'h0;
+        row3S2 = 40'h0;
         validS2 = 1'h0;
+        productS3 = 32'h0;
+        validS3 = 1'h0;
       end
     end // initial
     `ifdef FIRRTL_AFTER_INITIAL
@@ -804,10 +824,10 @@ module Mult16Booth2Stage(
     .io_two  (_booth_io_two)
   );
   PartialProductGen ppGen (
-    .io_a    (io_a),
-    .io_neg  (_booth_io_neg),
-    .io_zero (_booth_io_zero),
-    .io_two  (_booth_io_two),
+    .io_a    (aS1),
+    .io_neg  (negS1),
+    .io_zero (zeroS1),
+    .io_two  (twoS1),
     .io_pp_0 (_ppGen_io_pp_0),
     .io_pp_1 (_ppGen_io_pp_1),
     .io_pp_2 (_ppGen_io_pp_2),
@@ -818,15 +838,15 @@ module Mult16Booth2Stage(
     .io_pp_7 (_ppGen_io_pp_7)
   );
   Compressor4to2Array comp42 (
-    .io_a     (row0S1),
-    .io_b     (row1S1),
-    .io_c     (row2S1),
-    .io_d     (row3S1),
+    .io_a     (row0S2),
+    .io_b     (row1S2),
+    .io_c     (row2S2),
+    .io_d     (row3S2),
     .io_sum   (_comp42_io_sum),
     .io_carry (_comp42_io_carry)
   );
-  assign io_product = productS2;
-  assign io_validOut = validS2;
+  assign io_product = productS3;
+  assign io_validOut = validS3;
 endmodule
 
 module mac16(
@@ -840,50 +860,82 @@ module mac16(
          out_ready
 );
 
-  wire [31:0]     _mult_io_product;
-  wire            _mult_io_validOut;
-  wire            _GEN = ~rst_n;
-  reg  [2:0]      state;
-  reg  [4:0]      cnt;
-  reg  [15:0]     shiftA;
-  reg  [15:0]     shiftB;
-  reg  [23:0]     accum;
-  reg  [23:0]     prevProduct;
-  reg  [23:0]     outShiftReg;
-  reg             carryReg;
-  reg             firstOp;
-  reg             modeR;
-  reg             multValidIn;
-  reg  [31:0]     multReg;
-  reg             outReadyReg;
-  reg             sumOutReg;
-  wire            multEnable = state == 3'h1 | state == 3'h2;
-  wire            _GEN_0 = mode == modeR;
-  wire [24:0]     addResult =
+  wire [31:0]      _mult_io_product;
+  wire             _mult_io_validOut;
+  wire             _GEN = ~rst_n;
+  reg  [2:0]       state;
+  reg  [4:0]       cnt;
+  reg  [15:0]      shiftA;
+  reg  [15:0]      shiftB;
+  reg  [23:0]      accum;
+  reg  [23:0]      prevProduct;
+  reg  [23:0]      outShiftReg;
+  reg              carryReg;
+  reg              firstOp;
+  reg              modeR;
+  reg              multValidIn;
+  reg  [31:0]      multReg;
+  reg              outReadyReg;
+  reg              sumOutReg;
+  wire             multEnable = state == 3'h1 | state == 3'h2 | state == 3'h3;
+  wire             _GEN_0 = mode == modeR;
+  wire [24:0]      addResult =
     modeR
       ? {1'h0, multReg[23:0]} + {1'h0, accum}
       : {1'h0, multReg[23:0]} + {1'h0, prevProduct};
-  wire            _GEN_1 = firstOp & ~modeR;
-  wire [23:0]     macResult = _GEN_1 ? multReg[23:0] : addResult[23:0];
-  wire            _GEN_2 = state == 3'h0;
-  wire            _GEN_3 = cnt == 5'hF;
-  wire            _GEN_4 = state == 3'h1;
-  wire            _GEN_5 = state == 3'h2;
-  wire            _GEN_6 = state == 3'h3;
-  wire            _GEN_7 = state == 3'h4;
-  wire            _GEN_8 = _GEN_2 | _GEN_4 | _GEN_5;
-  wire            _GEN_9 = cnt == 5'h16;
-  wire            _GEN_10 = _GEN_7 & _GEN_9;
-  wire [7:0][4:0] _GEN_11 =
+  wire             _GEN_1 = firstOp & ~modeR;
+  wire [23:0]      macResult = _GEN_1 ? multReg[23:0] : addResult[23:0];
+  wire             _GEN_2 = state == 3'h0;
+  wire             _GEN_3 = cnt == 5'hF;
+  wire             _GEN_4 = state == 3'h1;
+  wire             _GEN_5 = state == 3'h2;
+  wire             _GEN_6 = state == 3'h3;
+  wire             _GEN_7 = state == 3'h4;
+  wire             _GEN_8 = state == 3'h5;
+  wire             _GEN_9 = _GEN_2 | _GEN_4 | _GEN_5 | _GEN_6;
+  wire             _GEN_10 = cnt == 5'h16;
+  wire             _GEN_11 = _GEN_8 & _GEN_10;
+  wire [2:0]       _GEN_12 = _GEN_11 ? 3'h0 : state;
+  wire             _GEN_13 = _GEN_4 | _GEN_5 | _GEN_6 | _GEN_7 | ~_GEN_11;
+  wire [15:0]      _GEN_14 = _GEN_13 ? shiftA : 16'h0;
+  wire [15:0]      _GEN_15 = _GEN_13 ? shiftB : 16'h0;
+  wire [7:0][2:0]  _GEN_16 =
+    {{_GEN_12},
+     {_GEN_12},
+     {_GEN_12},
+     {3'h5},
+     {_mult_io_validOut ? 3'h4 : state},
+     {3'h3},
+     {3'h2},
+     {_GEN_3 ? 3'h1 : state}};
+  wire [7:0][4:0]  _GEN_17 =
     {{cnt},
      {cnt},
-     {cnt},
-     {_GEN_9 ? 5'h0 : cnt + 5'h1},
+     {_GEN_10 ? 5'h0 : cnt + 5'h1},
      {5'h0},
      {cnt},
      {cnt},
+     {cnt},
      {_GEN_3 ? 5'h0 : cnt + 5'h1}};
-  wire            _GEN_12 = ~_GEN_10 | _GEN_0;
+  wire [7:0][15:0] _GEN_18 =
+    {{_GEN_14},
+     {_GEN_14},
+     {_GEN_14},
+     {shiftA},
+     {shiftA},
+     {shiftA},
+     {shiftA},
+     {{shiftA[14:0], inA}}};
+  wire [7:0][15:0] _GEN_19 =
+    {{_GEN_15},
+     {_GEN_15},
+     {_GEN_15},
+     {shiftB},
+     {shiftB},
+     {shiftB},
+     {shiftB},
+     {{shiftB[14:0], inB}}};
+  wire             _GEN_20 = ~_GEN_11 | _GEN_0;
   always @(posedge clk or posedge _GEN) begin
     if (_GEN) begin
       state <= 3'h0;
@@ -902,30 +954,12 @@ module mac16(
       sumOutReg <= 1'h0;
     end
     else begin
-      if (_GEN_2) begin
-        if (_GEN_3)
-          state <= 3'h1;
-        shiftA <= {shiftA[14:0], inA};
-        shiftB <= {shiftB[14:0], inB};
-        modeR <= mode;
-        multValidIn <= _GEN_3;
-      end
-      else begin
-        if (_GEN_4)
-          state <= 3'h2;
-        else if (_GEN_5) begin
-          if (_mult_io_validOut)
-            state <= 3'h3;
-        end
-        else if (_GEN_6)
-          state <= 3'h4;
-        else if (_GEN_10)
-          state <= 3'h0;
-        multValidIn <= ~_GEN_4 & multValidIn;
-      end
-      cnt <= _GEN_11[state];
-      if (~_GEN_8) begin
-        if (_GEN_6) begin
+      state <= _GEN_16[state];
+      cnt <= _GEN_17[state];
+      shiftA <= _GEN_18[state];
+      shiftB <= _GEN_19[state];
+      if (~_GEN_9) begin
+        if (_GEN_7) begin
           if (modeR) begin
             if (_GEN_1)
               accum <= multReg[23:0];
@@ -940,24 +974,30 @@ module mac16(
           carryReg <= (~firstOp | modeR) & addResult[24] | carryReg;
         end
         else begin
-          if (_GEN_12) begin
+          if (_GEN_20) begin
           end
           else begin
             accum <= 24'h0;
             prevProduct <= 24'h0;
           end
-          if (_GEN_7)
+          if (_GEN_8)
             outShiftReg <= {outShiftReg[22:0], 1'h0};
-          carryReg <= _GEN_12 & carryReg;
+          carryReg <= _GEN_20 & carryReg;
         end
-        firstOp <= ~_GEN_6 & (_GEN_10 & ~_GEN_0 | firstOp);
+        firstOp <= ~_GEN_7 & (_GEN_11 & ~_GEN_0 | firstOp);
       end
-      if (_GEN_2 | _GEN_4 | ~(_GEN_5 & _mult_io_validOut)) begin
+      if (_GEN_2) begin
+        modeR <= mode;
+        multValidIn <= _GEN_3;
+      end
+      else
+        multValidIn <= ~_GEN_4 & multValidIn;
+      if (_GEN_2 | _GEN_4 | _GEN_5 | ~(_GEN_6 & _mult_io_validOut)) begin
       end
       else
         multReg <= _mult_io_product;
-      outReadyReg <= ~_GEN_8 & (_GEN_6 | _GEN_7 & ~_GEN_9);
-      sumOutReg <= ~_GEN_8 & (_GEN_6 ? macResult[23] : _GEN_7 & outShiftReg[22]);
+      outReadyReg <= ~_GEN_9 & (_GEN_7 | _GEN_8 & ~_GEN_10);
+      sumOutReg <= ~_GEN_9 & (_GEN_7 ? macResult[23] : _GEN_8 & outShiftReg[22]);
     end
   end // always @(posedge, posedge)
   `ifdef ENABLE_INITIAL_REG_
@@ -986,7 +1026,7 @@ module mac16(
       `FIRRTL_AFTER_INITIAL
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  Mult16Booth2Stage mult (
+  Mult16Booth mult (
     .clock       (clk),
     .reset       (_GEN),
     .io_a        (multEnable ? shiftA : 16'h0),

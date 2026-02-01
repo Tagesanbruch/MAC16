@@ -23,12 +23,13 @@ class Mac16 extends RawModule {
     val inputBits  = 16
     val outputBits = 24
 
-    // State machine (2 mult stages for 2-stage pipeline)
+    // State machine (3 mult stages for 3-stage pipeline)
     val sInput       = 0.U(3.W)
     val sMultStage1  = 1.U(3.W)
     val sMultStage2  = 2.U(3.W)
-    val sAdd         = 3.U(3.W)
-    val sOutput      = 4.U(3.W)
+    val sMultStage3  = 3.U(3.W)
+    val sAdd         = 4.U(3.W)
+    val sOutput      = 5.U(3.W)
 
     val state = RegInit(sInput)
     val cnt   = RegInit(0.U(5.W))
@@ -53,8 +54,8 @@ class Mac16 extends RawModule {
     val outReadyReg = RegInit(false.B)
     val sumOutReg   = RegInit(false.B)
 
-    // 2-stage pipeline Booth multiplier with valid gating
-    val mult = Module(new Mult16BoothGated2Stage)
+    // 3-stage pipeline Booth multiplier with valid gating
+    val mult = Module(new Mult16BoothGated)
     mult.io.a := multInA
     mult.io.b := multInB
     mult.io.validIn := multInputValid
@@ -106,7 +107,11 @@ class Mac16 extends RawModule {
       }
 
       is(sMultStage2) {
-        // Wait for multiplier pipeline to complete (2-stage)
+        state := sMultStage3
+      }
+
+      is(sMultStage3) {
+        // Wait for multiplier pipeline to complete (3-stage)
         when(mult.io.validOut) {
           multReg := mult.io.product
           state := sAdd
@@ -142,6 +147,8 @@ class Mac16 extends RawModule {
           cnt         := 0.U
           outReadyReg := false.B  // Set out_ready low (registered output)
           state       := sInput
+          shiftA := 0.U
+          shiftB := 0.U
 
           when(mode =/= modeR) {
             accum := 0.U

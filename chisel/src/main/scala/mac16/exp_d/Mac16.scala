@@ -26,8 +26,9 @@ class Mac16 extends RawModule {
     val sInput       = 0.U(3.W)
     val sMultStage1  = 1.U(3.W)
     val sMultStage2  = 2.U(3.W)
-    val sAdd         = 3.U(3.W)
-    val sOutput      = 4.U(3.W)
+    val sMultStage3  = 3.U(3.W)
+    val sAdd         = 4.U(3.W)
+    val sOutput      = 5.U(3.W)
 
     val state = RegInit(sInput)
     val cnt   = RegInit(0.U(5.W))
@@ -50,10 +51,10 @@ class Mac16 extends RawModule {
     val sumOutReg   = RegInit(false.B)
 
     // Operand isolation - only enable multiplier during mult stages
-    val multEnable = (state === sMultStage1 || state === sMultStage2)
+    val multEnable = (state === sMultStage1 || state === sMultStage2 || state === sMultStage3)
 
-    // 2-stage pipeline Booth multiplier (matches original RTL's 2-cycle latency)
-    val mult = Module(new Mult16Booth2Stage)
+    // 3-stage pipeline Booth multiplier (matches original RTL)
+    val mult = Module(new Mult16Booth)
     mult.io.a       := Mux(multEnable, shiftA, 0.U)
     mult.io.b       := Mux(multEnable, shiftB, 0.U)
     mult.io.validIn := multValidIn
@@ -105,7 +106,11 @@ class Mac16 extends RawModule {
       }
 
       is(sMultStage2) {
-        // Wait for multiplier pipeline to complete (2-stage: validOut on this cycle)
+        state := sMultStage3
+      }
+
+      is(sMultStage3) {
+        // Wait for multiplier pipeline to complete (3-stage)
         when(mult.io.validOut) {
           multReg := mult.io.product
           state := sAdd
@@ -141,7 +146,8 @@ class Mac16 extends RawModule {
           cnt    := 0.U
           outReadyReg := false.B  // Set out_ready low (registered output like original RTL)
           state  := sInput
-          // Note: Do NOT clear shiftA/shiftB here - original RTL doesn't do this
+          shiftA := 0.U
+          shiftB := 0.U
 
           when(mode =/= modeR) {
             accum := 0.U
