@@ -6,6 +6,7 @@ logs/
 
 useless/
 ref/
+*.log
 *.out
 .vscode/
 .metals/

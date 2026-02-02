@@ -198,11 +198,26 @@ pr:
 verif:
 	@if [ "$(EXP)" = "ALL" ]; then \
 		exit_code=0; \
+		log_file="$(BUILD_DIR)/verif_all_$(TIMESTAMP).log"; \
+		echo "[VERIF_ALL] $$(date)" > $$log_file; \
+		fail_list=""; \
 		for d in ./rtl/experiments/*/; do \
 			exp_name=$$(basename $$d); \
-			echo "Running functional simulation for $$exp_name..."; \
-			$(MAKE) -f iEDA.mk EXP=$$exp_name verif || exit_code=1; \
+			echo "Running functional simulation for $$exp_name..." | tee -a $$log_file; \
+			if $(MAKE) -f iEDA.mk EXP=$$exp_name verif; then \
+				echo "[ALL] $$exp_name PASS" | tee -a $$log_file; \
+			else \
+				echo "[ALL] $$exp_name FAIL" | tee -a $$log_file; \
+				fail_list="$$fail_list $$exp_name"; \
+				exit_code=1; \
+			fi; \
 		done; \
+		if [ -n "$$fail_list" ]; then \
+			echo "[VERIF_ALL] Failed:$$fail_list" | tee -a $$log_file; \
+		else \
+			echo "[VERIF_ALL] All experiments passed" | tee -a $$log_file; \
+		fi; \
+		echo "[VERIF_ALL] Log: $$log_file" | tee -a $$log_file; \
 		exit $$exit_code; \
 	fi
 	@if [ "$(EXP_DIR_EXISTS)" = "no" ]; then \

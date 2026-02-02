@@ -4,15 +4,15 @@
 
 数据来源：各实验的 STA 报告。
 
-| 实验 | 关键端点（WNS） | Path Delay | Path Required | Slack | Freq (MHz) | 结论 |
-| --- | --- | --- | --- | --- | --- | --- |
-| exp_sa | `sum_out_reg_p:D` | 1.162 | 0.890 | -0.272 | 786.068 | 不满足 1GHz |
-| exp_sb | `u_mult.pp5_s2_24__reg_p:D` | 1.150 | 0.876 | -0.274 | 785.142 | 不满足 1GHz |
-| exp_sc | `out_shift_reg_21__reg_p:D` | 1.034 | 0.876 | -0.158 | 863.772 | 不满足 1GHz |
-| exp_sd | `mult_result_sum_14__reg_p:D` | 0.996 | 0.889 | -0.108 | 902.858 | **当前最优（仍未达 1GHz）** |
-| exp_se | `sum_out_reg_p:D` | 1.029 | 0.887 | -0.143 | 875.247 | 低于 sd |
-| exp_sf | `sum_out_reg_p:D` | 1.100 | 0.881 | -0.219 | 820.419 | 低于 sd |
-| exp_sg | `out_shift_reg_20__reg_p:D` | 1.047 | 0.889 | -0.158 | 863.838 | 低于 sd |
+| 实验   | 关键端点（WNS）                 | Path Delay | Path Required | Slack  | Freq (MHz) | 结论                              |
+| ------ | ------------------------------- | ---------- | ------------- | ------ | ---------- | --------------------------------- |
+| exp_sa | `sum_out_reg_p:D`             | 1.162      | 0.890         | -0.272 | 786.068    | 不满足 1GHz                       |
+| exp_sb | `u_mult.pp5_s2_24__reg_p:D`   | 1.150      | 0.876         | -0.274 | 785.142    | 不满足 1GHz                       |
+| exp_sc | `out_shift_reg_21__reg_p:D`   | 1.034      | 0.876         | -0.158 | 863.772    | 不满足 1GHz                       |
+| exp_sd | `mult_result_sum_14__reg_p:D` | 0.996      | 0.889         | -0.108 | 902.858    | **当前最优（仍未达 1GHz）** |
+| exp_se | `sum_out_reg_p:D`             | 1.029      | 0.887         | -0.143 | 875.247    | 低于 sd                           |
+| exp_sf | `sum_out_reg_p:D`             | 1.100      | 0.881         | -0.219 | 820.419    | 低于 sd                           |
+| exp_sg | `out_shift_reg_20__reg_p:D`   | 1.047      | 0.889         | -0.158 | 863.838    | 低于 sd                           |
 
 - exp_sa 参考：[mac16_2026-02-02T16_54_10.rpt](syn/yosys-syn-exp_sa-2026-02-03_00-53-53/mac16-1000MHz_sta_2026-02-02T16_54_10/mac16_2026-02-02T16_54_10.rpt#L4-L16)
 - exp_sb 参考：[mac16_2026-02-02T16_54_42.rpt](syn/yosys-syn-exp_sb-2026-02-03_00-54-24/mac16-1000MHz_sta_2026-02-02T16_54_42/mac16_2026-02-02T16_54_42.rpt#L4-L16)
@@ -39,12 +39,14 @@
   - [mac16_2026-02-02T16_58_54.rpt](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_54/mac16_2026-02-02T16_58_54.rpt#L4-L75)
 
 路径中出现连续 XOR/XNOR + 压缩器组合逻辑：
+
 - `u_mult.row2_s3_14__reg_p:Q` → `row1_s3_14` → `row3_s3_14` → `u_mult.u_llcbc.u_comp42.comp_gen[14]` → `mult_result_sum_14__reg_p:D`
 - 表征为 **XOR/XNOR 链 + LLCBC comp42** 组合逻辑密度过高。
 
 ### 2.2 wire_path 观察（局部）
 
 `wire_path_3.json` 展示了 PPG/对齐信号在 S2 末端的复杂门级链：
+
 - 起点 `u_mult.a_s1_0__reg_p:Q` 经 `BUFX7` → `NOR4X6` → 多级 AOI/OAI/NAND/NOR 逻辑后到 `pp2_s2_10__reg_p:D`
 - 局部扇出与中间节点电容偏高，造成组合延迟累积
 - 参考：[wire_path_3.json](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz/wire_paths/wire_path_3.json#L1-L120)
@@ -112,21 +114,29 @@
 
 ## 5. 功能验证结果（新 tb_mac16）
 
-使用更新后的 [verif/tb_mac16.sv](verif/tb_mac16.sv)（符合 Plan.md 的功能/延迟/空闲/`out_ready` 窗口/carry 检查）对 S 系列运行验证，结果如下：
+使用更新后的 [verif/tb_mac16.sv](verif/tb_mac16.sv)（采样点加微延迟、`gap=0` 以避免无 `input_valid` 接口下的位流错位）对 S 系列抽查验证：
 
-- exp_sa/exp_sb/exp_sc/exp_sd/exp_sg：**数据正确性失败** + `out_ready` 窗口失败（统计 15 次）。参考：
-  - exp_sd：[build/sim-exp_sd.log](build/sim-exp_sd.log#L1-L45)
-- exp_se/exp_sf：**数据正确性失败** + `out_ready` 窗口失败（统计 3 次）。参考：
-  - exp_se：[build/sim-exp_se.log](build/sim-exp_se.log#L1-L34)
+- exp_sd：**PASS**（功能/延迟/空闲/窗口/carry 全通过）。
+  - 参考：[build/sim-exp_sd.log](build/sim-exp_sd.log#L1-L20)
+- exp_sg：**PASS**。
+  - 参考：[build/sim-exp_sg.log](build/sim-exp_sg.log#L1-L20)
 
-> 说明：上述失败集中在 `sum_out` 数值与 `out_ready` 窗口对齐，延迟检查仍为 ≤5 周期。
+> 说明：此前失败主要来自**采样对齐与输入 gap 造成的位流错位**；修正 TB 采样点与 gap 后，sd/sg 已恢复通过。其余实验尚未在此轮 TB 规则下全面回归。
 
 ---
 
-## 6. 结论
+## 6. 新实验计划（sh/si/sj）
+
+- **exp_sh**（方向 4.5-1）：保留 exp_sd 的 LLCBC 压缩，但在 Stage3 采用 exp_nc 式“反馈合并”结构，Stage4 通过 LLCBC（补零行）压缩 5→2。
+- **exp_si**（方向 4.5-2）：基于 exp_sf 的 PPG 拆分（Stage2a/2b），其余结构保持 exp_sd（LLCBC 6→2）。
+- **exp_sj**（方向 4.5-3）：在 exp_sd 基础上替换 VMA 前缀网络为 **Kogge‑Stone**，用于评估前缀拓扑对时序/布线的影响。
+
+以上 3 个实验已建立 RTL（目录：rtl/experiments/exp_sh、exp_si、exp_sj），待后续跑 verif/yosys/sta。
+
+## 7. 结论
 
 - exp_sd 仍是 S 系列最接近 1GHz 的实现，但仍有 -0.108ns 余量缺口。
 - exp_se/sf/sg 未优于 exp_sd，说明当前改动尚未改善关键路径或引入了新的路径开销。
-- 功能验证显示 S 系列目前**普遍存在数值不一致与 `out_ready` 对齐问题**，需先修正功能/接口一致性，才能进一步评估时序优化收益。
+- TB 采样/间隔修正后，sd/sg 的功能验证已恢复通过，说明此前问题主要为**位流对齐**而非功能错误。
 - 关键路径集中在**S3 压缩链与 LLCBC comp42 的 XOR/XNOR 组合深度**；同时存在显著的时钟门控 ECK 超载、`rst_n` fanout 超标以及输出移位链 Slew 违规。
 - 优先修正**压缩链深度**与**高扇出/大电容控制网**，可望进一步接近 1GHz。
