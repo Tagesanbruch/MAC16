@@ -109,6 +109,8 @@ module tb_mac16;
             errors_data++;
         end
 
+        $display("[DEBUG] Measured latency: %0d cycles (input_done=%0d, output_start=%0d)",
+                 output_start_cycle - input_done_cycle, input_done_cycle, output_start_cycle);
         if (output_start_cycle - input_done_cycle > MAX_LATENCY) begin
             $display("[LATENCY] Violated: input_done=%0d output_start=%0d latency=%0d",
                      input_done_cycle, output_start_cycle, output_start_cycle - input_done_cycle);
