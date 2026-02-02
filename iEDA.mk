@@ -196,6 +196,15 @@ pr:
 		2>&1 | tee $(LATEST_SYN_DIR)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz/pr/ieda_pr.log
 
 verif:
+	@if [ "$(EXP)" = "ALL" ]; then \
+		exit_code=0; \
+		for d in ./rtl/experiments/*/; do \
+			exp_name=$$(basename $$d); \
+			echo "Running functional simulation for $$exp_name..."; \
+			$(MAKE) -f iEDA.mk EXP=$$exp_name verif || exit_code=1; \
+		done; \
+		exit $$exit_code; \
+	fi
 	@if [ "$(EXP_DIR_EXISTS)" = "no" ]; then \
 		echo "[ERROR] Experiment directory not found: $(RTL_DIR)"; \
 		exit 1; \

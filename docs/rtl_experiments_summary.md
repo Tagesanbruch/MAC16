@@ -338,6 +338,22 @@ DCS 让反馈回路去除 CPA，降低关键路径深度。
 - **exp_rf**：折中方案（S2 做 PPG + CSA1），减少寄存器位宽。
 - **一致性**：✅ 一致，目标是优化 PPG 关键路径。
 
+### 5.24 exp_sa / exp_sb / exp_sc / exp_sd（S 系列初代）
+
+- **exp_sa**：5:2 压缩器尝试（未达标，关键路径落在输出移位逻辑）。
+- **exp_sb**：6:3 计数器尝试（未达标，S2 PPG 路径偏深）。
+- **exp_sc**：7:3 计数器尝试（未达标，输出路径仍偏长）。
+- **exp_sd**：LLCBC‑style 6→2 压缩（当前 S 系列最优），
+  - 在严格角下约 902MHz（负 slack），
+  - 在另一路径/约束下出现 1644MHz（正 slack），需以赛题角为准。
+
+### 5.25 exp_se / exp_sf / exp_sg（S 系列二代：针对 4.1~4.3）
+
+- **exp_se**：拆分 LLCBC 压缩链为 6→4（CSA）+ 4→2（comp42）两级流水。
+- **exp_sf**：PPG 与对齐拆分为两级流水（减少对齐链深度）。
+- **exp_sg**：取消流水寄存器时钟使能，仅保留 valid 标记，尝试降低 ECK 负载。
+- **结论**：均未优于 exp_sd。
+
 ---
 
 ## 6. 体系化归类（便于选型）
@@ -381,6 +397,8 @@ DCS 让反馈回路去除 CPA，降低关键路径深度。
 2. **增加流水级未必有效**：Exp ND / L / M / O 等验证了“拥塞与寄存器成本”会反向伤害时序。
 3. **显式 VMA（Han‑Carlson）收益最大**：exp_ng/exp_r 明显优于隐式 `+`。
 4. **RTL 命名与实现需校验**：exp_b、exp_nf、exp_nb 存在“意图/实现不一致”。
+
+5. **S 系列压缩链仍是瓶颈**：LLCBC/计数器虽降低理论层级，但关键路径仍落在压缩/输出链与高扇出控制网。
 
 ---
 
@@ -426,10 +444,24 @@ DCS 让反馈回路去除 CPA，降低关键路径深度。
 
 ### 10.3 `tb_mac16.sv` 与 `tb_latency_check.sv` 组合是否满足题意
 
-- [verif/tb_mac16.sv](verif/tb_mac16.sv) 覆盖**功能正确性**（三种 mode 场景、6 组数据的数值比对），但**未显式检查**“输入完成到输出开始 ≤5 clk”。
-- [verif/tb_latency_check.sv](verif/tb_latency_check.sv) 覆盖**延迟约束**，但**未覆盖**功能正确性、组间间隔、输出空闲拉 0、`carry` 行为等。
+- [verif/tb_mac16.sv](verif/tb_mac16.sv) 已更新为**覆盖 Plan.md 要求**：三种 mode 场景数值比对、输入完成到输出开始 ≤5 clk、`out_ready` 窗口对齐、空闲输出为 0、`carry` 行为、输入组间间隔 ≤5 clk。
+- [verif/tb_latency_check.sv](verif/tb_latency_check.sv) 仍是**延迟审计专用**，用于快速确认延迟约束。
 
-**综合判断**：两者分工明确、组合后**基本覆盖“功能 + 延迟”两大硬性要求**，但仍与 [Plan.md](Plan.md) 的完整 testbench 规范存在缺口（输出空闲、carry 清除、组间间隔建模）。如果严格按赛题要求，仍建议在功能 TB 中补充这些检查项。
+**综合判断**：当前以更新后的 `tb_mac16.sv` 作为主验证入口，已能满足 Plan.md 的完整 testbench 规范；`tb_latency_check.sv` 作为补充的快速延迟检查保留。
+
+### 10.4 新版 `tb_mac16.sv` 验证结果（EXP=ALL）
+
+运行 `make -f iEDA.mk EXP=ALL verif` 后，多个实验出现**数值错误**与/或 **`out_ready` 窗口不对齐**，说明当前实现与 Plan.md 的接口/时序期望仍不一致：
+
+- S 系列（sa/sb/sc/sd/se/sf/sg）均出现数值错误；其中 exp_sd/sg 的 `out_ready` 窗口失败次数为 15，exp_se/sf 为 3。
+  - exp_sd 参考：[build/sim-exp_sd.log](build/sim-exp_sd.log#L1-L45)
+  - exp_se 参考：[build/sim-exp_se.log](build/sim-exp_se.log#L1-L34)
+- 深流水实验 exp_o/exp_p/exp_q 同时出现**延迟 >5 周期**与数值错误：
+  - exp_o 参考：[build/sim-exp_o.log](build/sim-exp_o.log#L1-L29)
+  - exp_p 参考：[build/sim-exp_p.log](build/sim-exp_p.log#L1-L31)
+  - exp_q 参考：[build/sim-exp_q.log](build/sim-exp_q.log#L1-L31)
+
+> 备注：以上结果来自新的功能 TB；现阶段需要先修正接口/时序对齐问题，再评估各实验的 PPA/STA 优劣。
 
 ---
 
@@ -454,6 +486,7 @@ DCS 让反馈回路去除 CPA，降低关键路径深度。
   - 5/6/8 级尝试（exp_k/l/m/o/p/q）验证了频率/延迟权衡；
   - “S2 仅 PPG、S3 合并多层 CSA”的重定时思路已在 exp_nc 成功。
 - **PPG/Stage2 关键路径拆分**：exp_rd/re/rf 明确实践。
+- **LLCBC 风格压缩**：exp_sd 已实现；exp_se 进一步拆分但收益有限。
 
 ### 11.2 尚未实现或未落地的频率相关方向
 
@@ -483,6 +516,11 @@ DCS 让反馈回路去除 CPA，降低关键路径深度。
   - 保持 VMA 后置（exp_ng 路线），同时探索更紧凑的前缀网络拓扑以减小线长。
 - 若继续保留 5 周期延迟约束：
   - 深流水线（K/L/M/O/P/Q）作为“频率探索”保留，但不作为合规候选。
+
+### 11.5 当前目标与判定依据
+
+- **短期目标**：SS 角下通过 1GHz（1ns）约束，同时保持延迟 ≤5 clk。
+- **判定依据**：以 multi‑corner STA 中 SS 角报告为准。
 
   - docs/2026-02-02-optimization-results.md
   - docs/2026-02-02-latency-audit-report.md

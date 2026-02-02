@@ -44,20 +44,15 @@ module mac16 (
     logic [24:0] add_result;
     logic [23:0] mac_result;
     logic mult_valid_in, mult_valid_out;
-    logic mult_enable;  // Operand isolation control
-
-    // Operand isolation: only enable multiplier during computation
-    assign mult_enable = (state == S_INPUT && cnt == INPUT_BITS - 1) ||
-                         (state == S_MULT_STAGE1) ||
-                         (state == S_MULT_STAGE2) ||
-                         (state == S_MULT_STAGE3);
+    logic mult_valid_pending;
+    logic [INPUT_BITS-1:0] mult_in_a, mult_in_b;
 
     // 3-stage pipeline multiplier with operand isolation
     mult16_pipeline_3stage u_mult (
         .clk(clk),
         .rst_n(rst_n),
-        .a(mult_enable ? shift_a : 16'd0),  // Operand isolation
-        .b(mult_enable ? shift_b : 16'd0),  // Operand isolation
+        .a(mult_in_a),
+        .b(mult_in_b),
         .valid_in(mult_valid_in),
         .product(mult_result),
         .valid_out(mult_valid_out)
@@ -95,6 +90,9 @@ module mac16 (
             out_ready <= 1'b0;
             mult_valid_in <= 1'b0;
             mult_reg <= '0;
+            mult_valid_pending <= 1'b0;
+            mult_in_a <= '0;
+            mult_in_b <= '0;
         end else begin
             case (state)
                 S_INPUT: begin
@@ -102,6 +100,12 @@ module mac16 (
                     sum_out <= 1'b0;
                     mode_r <= mode;
                     mult_valid_in <= 1'b0;
+                    if (mode != mode_r) begin
+                        accum <= '0;
+                        prev_product <= '0;
+                        carry_reg <= 1'b0;
+                        first_op <= 1'b1;
+                    end
 
                     shift_a <= {shift_a[INPUT_BITS-2:0], inA};
                     shift_b <= {shift_b[INPUT_BITS-2:0], inB};
@@ -109,14 +113,21 @@ module mac16 (
                     if (cnt == INPUT_BITS - 1) begin
                         cnt <= '0;
                         state <= S_MULT_STAGE1;
-                        mult_valid_in <= 1'b1;
+                        mult_valid_pending <= 1'b1;
+                        mult_in_a <= {shift_a[INPUT_BITS-2:0], inA};
+                        mult_in_b <= {shift_b[INPUT_BITS-2:0], inB};
                     end else begin
                         cnt <= cnt + 1'b1;
                     end
                 end
 
                 S_MULT_STAGE1: begin
-                    mult_valid_in <= 1'b0;
+                    if (mult_valid_pending) begin
+                        mult_valid_in <= 1'b1;
+                        mult_valid_pending <= 1'b0;
+                    end else begin
+                        mult_valid_in <= 1'b0;
+                    end
                     state <= S_MULT_STAGE2;
                 end
 
@@ -158,7 +169,6 @@ module mac16 (
 
                     if (cnt == OUTPUT_BITS - 2) begin
                         cnt <= '0;
-                        out_ready <= 1'b0;
                         state <= S_INPUT;
 
                         if (mode != mode_r) begin

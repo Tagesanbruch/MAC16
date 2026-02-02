@@ -10,13 +10,20 @@
 | exp_sb | `u_mult.pp5_s2_24__reg_p:D` | 1.150 | 0.876 | -0.274 | 785.142 | 不满足 1GHz |
 | exp_sc | `out_shift_reg_21__reg_p:D` | 1.034 | 0.876 | -0.158 | 863.772 | 不满足 1GHz |
 | exp_sd | `mult_result_sum_14__reg_p:D` | 0.996 | 0.889 | -0.108 | 902.858 | **当前最优（仍未达 1GHz）** |
+| exp_se | `sum_out_reg_p:D` | 1.029 | 0.887 | -0.143 | 875.247 | 低于 sd |
+| exp_sf | `sum_out_reg_p:D` | 1.100 | 0.881 | -0.219 | 820.419 | 低于 sd |
+| exp_sg | `out_shift_reg_20__reg_p:D` | 1.047 | 0.889 | -0.158 | 863.838 | 低于 sd |
 
 - exp_sa 参考：[mac16_2026-02-02T16_54_10.rpt](syn/yosys-syn-exp_sa-2026-02-03_00-53-53/mac16-1000MHz_sta_2026-02-02T16_54_10/mac16_2026-02-02T16_54_10.rpt#L4-L16)
 - exp_sb 参考：[mac16_2026-02-02T16_54_42.rpt](syn/yosys-syn-exp_sb-2026-02-03_00-54-24/mac16-1000MHz_sta_2026-02-02T16_54_42/mac16_2026-02-02T16_54_42.rpt#L4-L16)
 - exp_sc 参考：[mac16_2026-02-02T16_55_20.rpt](syn/yosys-syn-exp_sc-2026-02-03_00-55-02/mac16-1000MHz_sta_2026-02-02T16_55_20/mac16_2026-02-02T16_55_20.rpt#L4-L16)
-- exp_sd 参考：[mac16_2026-02-02T16_58_54.rpt](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_54/mac16_2026-02-02T16_58_54.rpt#L4-L16)
+- exp_sd（慢角/严格约束）参考：[mac16_2026-02-02T16_58_54.rpt](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_54/mac16_2026-02-02T16_58_54.rpt#L4-L16)
+- exp_sd（快速角/宽裕约束）参考：[mac16_2026-02-02T16_58_49.rpt](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_49/mac16_2026-02-02T16_58_49.rpt#L4-L13)
+- exp_se 参考：[mac16_2026-02-02T17_11_39.rpt](syn/yosys-syn-exp_se-2026-02-03_01-11-13/mac16-1000MHz_sta_2026-02-02T17_11_39/mac16_2026-02-02T17_11_39.rpt#L4-L16)
+- exp_sf 参考：[mac16_2026-02-02T17_12_44.rpt](syn/yosys-syn-exp_sf-2026-02-03_01-12-18/mac16-1000MHz_sta_2026-02-02T17_12_44/mac16_2026-02-02T17_12_44.rpt#L4-L16)
+- exp_sg 参考：[mac16_2026-02-02T17_13_28.rpt](syn/yosys-syn-exp_sg-2026-02-03_01-13-02/mac16-1000MHz_sta_2026-02-02T17_13_28/mac16_2026-02-02T17_13_28.rpt#L4-L16)
 
-> 注：当前报告中未发现 1644 MHz 的 TT 频率记录；exp_sd 仅在 STA 表中显示 902.858 MHz。
+> 注：exp_sd 在 16_58_49 的 STA 中显示 **1644.118 MHz**（正 slack），但在 16_58_54 的 STA 中显示 **902.858 MHz**（负 slack）。两者应为不同角/约束或模型设置导致的差异，需要以赛题目标角为准。
 
 ---
 
@@ -51,6 +58,7 @@
 - 多个 ICG `ECK` 节点超标（`valid_s1/s2` 与 `mult_input_valid`），最大超限约 0.145–0.146。
 - 参考：
   - [mac16_2026-02-02T16_58_54.cap](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_54/mac16_2026-02-02T16_58_54.cap#L1-L12)
+  - [mac16_2026-02-02T16_58_49.cap](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_49/mac16_2026-02-02T16_58_49.cap#L1-L12)
 
 ### 3.2 Fanout
 
@@ -58,12 +66,14 @@
 - `valid_s1/s2` 相关 ECK 的 fanout=175/121。
 - 参考：
   - [mac16_2026-02-02T16_58_54.fanout](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_54/mac16_2026-02-02T16_58_54.fanout#L1-L12)
+  - [mac16_2026-02-02T16_58_49.fanout](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_49/mac16_2026-02-02T16_58_49.fanout#L1-L12)
 
 ### 3.3 Transition (Slew)
 
 - 输出移位寄存器链 (`out_shift_reg_20/21/17`) 与 `carry_reg` 相关门级出现严重 slew 违规。
 - 参考：
   - [mac16_2026-02-02T16_58_54.trans](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_54/mac16_2026-02-02T16_58_54.trans#L1-L14)
+  - [mac16_2026-02-02T16_58_49.trans](syn/yosys-syn-exp_sd-2026-02-03_00-58-26/mac16-1000MHz_sta_2026-02-02T16_58_49/mac16_2026-02-02T16_58_49.trans#L1-L10)
 
 ---
 
@@ -91,10 +101,32 @@
 
 - 输出链 OAI/NAND 组合过深，建议在 `out_shift_reg_*` 前**插入级间缓冲**，或将长链逻辑拆成两拍。
 
+### 4.5 exp_sd 与前序思路的可融合方向
+
+- **与 exp_nc 的“PPG 单独成级”思路融合**：保持 exp_sd 的 LLCBC 压缩结构，但进一步强化 S2 仅做 PPG/对齐、S3 专注多层压缩的分层，避免 PPG 对齐链与压缩树在同级堆叠。
+- **与 exp_rd/re/rf 的 PPG 分裂尝试融合**：exp_sf 已切分 PPG/对齐，但可将 exp_sd 的 LLCBC 放在后级，尝试把对齐/移位逻辑从关键位（如 bit[14]）剥离到前一拍，减少关键位 XOR/XNOR 链深度。
+- **与 exp_ng 的 VMA/前缀网络优化融合**：保留 exp_sd 的压缩树结构，VMA 选择 Han‑Carlson/Spanning Tree 变体并严格控制扇出（减小 `rst_n/valid` 控制网负载），重点削减输出移位链的 slews。
+- **与“取消细粒度门控”思路融合**：借鉴 exp_sg 的 always‑sample 方案，弱化 ECK 负载，减少控制网电容与时钟门控引入的附加路径延迟。
+
 ---
 
-## 5. 结论
+## 5. 功能验证结果（新 tb_mac16）
 
-- exp_sd 是 sa/sb/sc/sd 中最接近 1GHz 的实现，但仍有 -0.108ns 余量缺口。
+使用更新后的 [verif/tb_mac16.sv](verif/tb_mac16.sv)（符合 Plan.md 的功能/延迟/空闲/`out_ready` 窗口/carry 检查）对 S 系列运行验证，结果如下：
+
+- exp_sa/exp_sb/exp_sc/exp_sd/exp_sg：**数据正确性失败** + `out_ready` 窗口失败（统计 15 次）。参考：
+  - exp_sd：[build/sim-exp_sd.log](build/sim-exp_sd.log#L1-L45)
+- exp_se/exp_sf：**数据正确性失败** + `out_ready` 窗口失败（统计 3 次）。参考：
+  - exp_se：[build/sim-exp_se.log](build/sim-exp_se.log#L1-L34)
+
+> 说明：上述失败集中在 `sum_out` 数值与 `out_ready` 窗口对齐，延迟检查仍为 ≤5 周期。
+
+---
+
+## 6. 结论
+
+- exp_sd 仍是 S 系列最接近 1GHz 的实现，但仍有 -0.108ns 余量缺口。
+- exp_se/sf/sg 未优于 exp_sd，说明当前改动尚未改善关键路径或引入了新的路径开销。
+- 功能验证显示 S 系列目前**普遍存在数值不一致与 `out_ready` 对齐问题**，需先修正功能/接口一致性，才能进一步评估时序优化收益。
 - 关键路径集中在**S3 压缩链与 LLCBC comp42 的 XOR/XNOR 组合深度**；同时存在显著的时钟门控 ECK 超载、`rst_n` fanout 超标以及输出移位链 Slew 违规。
 - 优先修正**压缩链深度**与**高扇出/大电容控制网**，可望进一步接近 1GHz。

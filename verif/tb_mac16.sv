@@ -23,8 +23,10 @@ module tb_mac16;
     );
 
     localparam real CLK_PERIOD = 1.0;
-    localparam INPUT_BITS = 16;
-    localparam OUTPUT_BITS = 24;
+    localparam int INPUT_BITS = 16;
+    localparam int OUTPUT_BITS = 24;
+    localparam int MAX_GAP = 5;
+    localparam int MAX_LATENCY = 5;
 
     initial clk = 0;
     always #(CLK_PERIOD/2) clk = ~clk;
@@ -33,142 +35,278 @@ module tb_mac16;
     logic [15:0] test_b [0:5];
 
     initial begin
-        test_a[0] = 16'd2; test_a[1] = 16'd8; test_a[2] = 16'd14;
+        test_a[0] = 16'd2;   test_a[1] = 16'd8;    test_a[2] = 16'd14;
         test_a[3] = 16'd116; test_a[4] = 16'd1546; test_a[5] = 16'd20698;
-        
-        test_b[0] = 16'd6; test_b[1] = 16'd30; test_b[2] = 16'd71;
+
+        test_b[0] = 16'd6;   test_b[1] = 16'd30;   test_b[2] = 16'd71;
         test_b[3] = 16'd828; test_b[4] = 16'd1152; test_b[5] = 16'd728;
     end
 
-    logic [23:0] expected_out;
-    logic [23:0] received_out;
-    logic [31:0] accum_ref;
-    logic [31:0] prev_product_ref;
-    int errors;
+    int cycle_count;
+    always @(posedge clk) cycle_count++;
 
-    task automatic do_one_mac(input logic [15:0] a, input logic [15:0] b, output logic [23:0] result);
-        int i;
-        result = '0;
-        
-        for (i = INPUT_BITS-1; i >= 0; i--) begin
+    int errors_data;
+    int errors_latency;
+    int errors_idle;
+    int errors_carry;
+    int errors_ready;
+
+    logic [23:0] received_out;
+
+    function automatic int signed mul16(input logic [15:0] a, input logic [15:0] b);
+        int signed aa;
+        int signed bb;
+        begin
+            aa = $signed(a);
+            bb = $signed(b);
+            return aa * bb;
+        end
+    endfunction
+
+    task automatic wait_idle_and_check_zero(input int cycles);
+        for (int i = 0; i < cycles; i++) begin
+            @(posedge clk);
+            #1ps;
+            if (out_ready !== 1'b0) begin
+                $display("[READY] out_ready should be 0 during idle, got 1 at cycle %0d", cycle_count);
+                errors_ready++;
+            end
+            if (sum_out !== 1'b0) begin
+                $display("[IDLE] sum_out should be 0 during idle, got %0b at cycle %0d", sum_out, cycle_count);
+                errors_idle++;
+            end
+        end
+    endtask
+
+    task automatic shift_in_16(input logic [15:0] a, input logic [15:0] b);
+        for (int i = INPUT_BITS-1; i >= 0; i--) begin
             inA = a[i];
             inB = b[i];
             @(posedge clk);
         end
-        inA = 0;
-        inB = 0;
-        
+        inA = 1'b0;
+        inB = 1'b0;
+    endtask
+
+    task automatic wait_for_output_and_capture(
+        input int input_done_cycle,
+        output int output_start_cycle,
+        output logic [23:0] out_data,
+        output int ready_cycles
+    );
+        output_start_cycle = -1;
+        out_data = '0;
+        ready_cycles = 0;
+
         wait(out_ready == 1'b1);
-        
-        for (i = OUTPUT_BITS-1; i >= 0; i--) begin
+        #1ps;
+        output_start_cycle = cycle_count;
+        out_data[OUTPUT_BITS-1] = sum_out;
+        ready_cycles++;
+
+        if (^sum_out === 1'bx) begin
+            $display("[DATA] sum_out is X at output start cycle %0d", output_start_cycle);
+            errors_data++;
+        end
+
+        if (output_start_cycle - input_done_cycle > MAX_LATENCY) begin
+            $display("[LATENCY] Violated: input_done=%0d output_start=%0d latency=%0d",
+                     input_done_cycle, output_start_cycle, output_start_cycle - input_done_cycle);
+            errors_latency++;
+        end
+
+        for (int i = OUTPUT_BITS-2; i >= 0; i--) begin
             @(posedge clk);
-            result[i] = sum_out;
+            #1ps;
+            if (out_ready !== 1'b1) begin
+                $display("[READY] out_ready dropped early at cycle %0d", cycle_count);
+                errors_ready++;
+            end
+            out_data[i] = sum_out;
+            ready_cycles++;
         end
-        
-        wait(out_ready == 1'b0);
+
+        @(posedge clk);
+        #1ps;
+        if (out_ready !== 1'b0) begin
+            $display("[READY] out_ready should deassert after output window at cycle %0d", cycle_count);
+            errors_ready++;
+        end
+        if (sum_out !== 1'b0) begin
+            $display("[IDLE] sum_out should be 0 after output window at cycle %0d", cycle_count);
+            errors_idle++;
+        end
+        if (ready_cycles != OUTPUT_BITS) begin
+            $display("[READY] out_ready window length mismatch: expected=%0d got=%0d", OUTPUT_BITS, ready_cycles);
+            errors_ready++;
+        end
     endtask
 
-    task automatic run_test_mode0();
-        int i;
-        $display("=== Test Mode 0: Current product + Previous product ===");
-        errors = 0;
-        prev_product_ref = 0;
+    task automatic check_carry_latched(
+        input logic expected_carry_next,
+        inout logic carry_latched
+    );
+        if (expected_carry_next) begin
+            if (carry !== 1'b1) begin
+                $display("[CARRY] carry should assert on overflow at cycle %0d, expected=1 got=%0b",
+                         cycle_count, carry);
+                errors_carry++;
+            end
+            carry_latched = 1'b1;
+        end else begin
+            if (carry !== carry_latched) begin
+                $display("[CARRY] carry mismatch at cycle %0d, expected=%0b got=%0b",
+                         cycle_count, carry_latched, carry);
+                errors_carry++;
+            end
+        end
+    endtask
 
-        for (i = 0; i < 6; i++) begin
-            do_one_mac(test_a[i], test_b[i], received_out);
+    task automatic run_case_mode0();
+        int input_done_cycle;
+        int output_start_cycle;
+        int ready_cycles;
+        int signed prod;
+        int signed prev_prod;
+        longint signed full_sum;
+        logic carry_latched;
+        int gap_cycles;
 
+        $display("=== Case 1: mode=0 ===");
+        mode = 1'b0;
+        prev_prod = 0;
+        carry_latched = 1'b0;
+
+        for (int i = 0; i < 6; i++) begin
+            gap_cycles = 0;
+            wait_idle_and_check_zero(gap_cycles);
+
+            shift_in_16(test_a[i], test_b[i]);
+            input_done_cycle = cycle_count;
+
+            prod = mul16(test_a[i], test_b[i]);
             if (i == 0) begin
-                expected_out = (test_a[i] * test_b[i]) & 24'hFFFFFF;
+                full_sum = prod;
             end else begin
-                expected_out = ((test_a[i] * test_b[i]) + prev_product_ref) & 24'hFFFFFF;
+                full_sum = prod + prev_prod;
             end
-            prev_product_ref = expected_out;
+            prev_prod = full_sum;
 
-            if (received_out !== expected_out) begin
-                $display("Mode0 Test %0d FAILED: A=%0d, B=%0d, Expected=%0h, Got=%0h",
-                         i, test_a[i], test_b[i], expected_out, received_out);
-                errors++;
-            end else begin
-                $display("Mode0 Test %0d PASSED: A=%0d, B=%0d, Result=%0h",
-                         i, test_a[i], test_b[i], received_out);
+            wait_for_output_and_capture(input_done_cycle, output_start_cycle, received_out, ready_cycles);
+
+            if (received_out !== full_sum[23:0]) begin
+                $display("[DATA] mode0 idx=%0d expected=%0h got=%0h", i, full_sum[23:0], received_out);
+                $display("[DEBUG] mode0 idx=%0d start=%0d ready_cycles=%0d got_b=%0b exp_b=%0b",
+                         i, output_start_cycle, ready_cycles, received_out, full_sum[23:0]);
+                errors_data++;
             end
+
+            check_carry_latched((full_sum >> 24) != 0, carry_latched);
         end
-
-        if (errors == 0)
-            $display("Mode 0: Simulation Passed");
-        else
-            $display("Mode 0: Simulation Failed");
     endtask
 
-    task automatic run_test_mode1();
-        int i;
-        $display("\n=== Test Mode 1: Full Accumulation ===");
-        errors = 0;
-        accum_ref = 0;
+    task automatic run_case_mode1();
+        int input_done_cycle;
+        int output_start_cycle;
+        int ready_cycles;
+        int signed prod;
+        longint signed accum;
+        logic carry_latched;
+        int gap_cycles;
 
-        for (i = 0; i < 6; i++) begin
-            do_one_mac(test_a[i], test_b[i], received_out);
+        $display("=== Case 2: mode=1 ===");
+        mode = 1'b1;
+        accum = 0;
+        carry_latched = 1'b0;
 
-            accum_ref = accum_ref + (test_a[i] * test_b[i]);
-            expected_out = accum_ref[23:0];
+        for (int i = 0; i < 6; i++) begin
+            gap_cycles = 0;
+            wait_idle_and_check_zero(gap_cycles);
 
-            if (received_out !== expected_out) begin
-                $display("Mode1 Test %0d FAILED: A=%0d, B=%0d, Expected=%0h, Got=%0h",
-                         i, test_a[i], test_b[i], expected_out, received_out);
-                errors++;
-            end else begin
-                $display("Mode1 Test %0d PASSED: A=%0d, B=%0d, Result=%0h, Accum=%0h",
-                         i, test_a[i], test_b[i], received_out, accum_ref);
+            shift_in_16(test_a[i], test_b[i]);
+            input_done_cycle = cycle_count;
+
+            prod = mul16(test_a[i], test_b[i]);
+            accum = accum + prod;
+
+            wait_for_output_and_capture(input_done_cycle, output_start_cycle, received_out, ready_cycles);
+
+            if (received_out !== accum[23:0]) begin
+                $display("[DATA] mode1 idx=%0d expected=%0h got=%0h", i, accum[23:0], received_out);
+                $display("[DEBUG] mode1 idx=%0d start=%0d ready_cycles=%0d got_b=%0b exp_b=%0b",
+                         i, output_start_cycle, ready_cycles, received_out, accum[23:0]);
+                errors_data++;
             end
-        end
 
-        if (errors == 0)
-            $display("Mode 1: Simulation Passed");
-        else
-            $display("Mode 1: Simulation Failed");
+            check_carry_latched((accum >> 24) != 0, carry_latched);
+        end
     endtask
 
-    task automatic run_test_mode_switch();
-        int i;
-        $display("\n=== Test Mode Switch: 0->1 after input 3 ===");
-        errors = 0;
-        prev_product_ref = 0;
-        accum_ref = 0;
+    task automatic run_case_mode_switch();
+        int input_done_cycle;
+        int output_start_cycle;
+        int ready_cycles;
+        int signed prod;
+        longint signed accum;
+        int signed prev_prod;
+        logic carry_latched;
+        int gap_cycles;
+        bit mode_switched;
 
-        for (i = 0; i < 6; i++) begin
-            if (i == 3) begin
-                mode = 1;
-                accum_ref = 0;
-            end
+        $display("=== Case 3: mode=0 -> 1 after 3rd input ===");
+        mode = 1'b0;
+        prev_prod = 0;
+        accum = 0;
+        carry_latched = 1'b0;
+        mode_switched = 1'b0;
 
-            do_one_mac(test_a[i], test_b[i], received_out);
+        for (int i = 0; i < 6; i++) begin
+            gap_cycles = 0;
+            wait_idle_and_check_zero(gap_cycles);
 
-            if (mode == 0) begin
+            shift_in_16(test_a[i], test_b[i]);
+            input_done_cycle = cycle_count;
+
+            prod = mul16(test_a[i], test_b[i]);
+
+            if (mode == 1'b0) begin
                 if (i == 0) begin
-                    expected_out = (test_a[i] * test_b[i]) & 24'hFFFFFF;
+                    accum = prod;
                 end else begin
-                    expected_out = ((test_a[i] * test_b[i]) + prev_product_ref) & 24'hFFFFFF;
+                    accum = prod + prev_prod;
                 end
-                prev_product_ref = expected_out;
+                prev_prod = accum;
             end else begin
-                accum_ref = accum_ref + (test_a[i] * test_b[i]);
-                expected_out = accum_ref[23:0];
+                accum = accum + prod;
             end
 
-            if (received_out !== expected_out) begin
-                $display("ModeSwitch Test %0d FAILED: mode=%0d, A=%0d, B=%0d, Expected=%0h, Got=%0h",
-                         i, mode, test_a[i], test_b[i], expected_out, received_out);
-                errors++;
-            end else begin
-                $display("ModeSwitch Test %0d PASSED: mode=%0d, A=%0d, B=%0d, Result=%0h",
-                         i, mode, test_a[i], test_b[i], received_out);
+            wait_for_output_and_capture(input_done_cycle, output_start_cycle, received_out, ready_cycles);
+
+            if (received_out !== accum[23:0]) begin
+                $display("[DATA] modeswitch idx=%0d mode=%0d expected=%0h got=%0h", i, mode, accum[23:0], received_out);
+                $display("[DEBUG] modeswitch idx=%0d start=%0d ready_cycles=%0d got_b=%0b exp_b=%0b",
+                         i, output_start_cycle, ready_cycles, received_out, accum[23:0]);
+                errors_data++;
+            end
+
+            check_carry_latched((accum >> 24) != 0, carry_latched);
+
+            if (i == 2) begin
+                mode = 1'b1;
+                accum = 0;
+                prev_prod = 0;
+                carry_latched = 1'b0;
+                mode_switched = 1'b1;
+            end
+
+            if (mode_switched && i == 3) begin
+                if (carry !== 1'b0) begin
+                    $display("[CARRY] carry should clear on mode switch before first mode1 output at cycle %0d", cycle_count);
+                    errors_carry++;
+                end
+                mode_switched = 1'b0;
             end
         end
-
-        if (errors == 0)
-            $display("Mode Switch: Simulation Passed");
-        else
-            $display("Mode Switch: Simulation Failed");
     endtask
 
     initial begin
@@ -179,29 +317,60 @@ module tb_mac16;
         mode = 0;
         inA = 0;
         inB = 0;
-        errors = 0;
+        cycle_count = 0;
+        errors_data = 0;
+        errors_latency = 0;
+        errors_idle = 0;
+        errors_carry = 0;
+        errors_ready = 0;
 
         repeat(2) @(posedge clk);
         rst_n = 1;
 
-        run_test_mode0();
+        run_case_mode0();
 
         rst_n = 0;
         repeat(2) @(posedge clk);
         rst_n = 1;
-        mode = 1;
-
-        run_test_mode1();
+        run_case_mode1();
 
         rst_n = 0;
         repeat(2) @(posedge clk);
         rst_n = 1;
-        mode = 0;
+        run_case_mode_switch();
 
-        run_test_mode_switch();
+        $display("\n=== Summary ===");
+        if (errors_data == 0)
+            $display("[PASS] data correctness");
+        else
+            $display("[FAIL] data correctness: %0d", errors_data);
 
-        #100;
-        $display("\n=== All Tests Complete ===");
+        if (errors_latency == 0)
+            $display("[PASS] latency <= %0d", MAX_LATENCY);
+        else
+            $display("[FAIL] latency: %0d", errors_latency);
+
+        if (errors_idle == 0)
+            $display("[PASS] idle output zero");
+        else
+            $display("[FAIL] idle output zero: %0d", errors_idle);
+
+        if (errors_ready == 0)
+            $display("[PASS] out_ready window");
+        else
+            $display("[FAIL] out_ready window: %0d", errors_ready);
+
+        if (errors_carry == 0)
+            $display("[PASS] carry behavior");
+        else
+            $display("[FAIL] carry behavior: %0d", errors_carry);
+
+        if ((errors_data + errors_latency + errors_idle + errors_ready + errors_carry) == 0)
+            $display("Simulation Passed");
+        else
+            $display("Simulation Failed");
+
+        #50;
         $finish;
     end
 
