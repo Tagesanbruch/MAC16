@@ -13,6 +13,9 @@
 | exp_se | `sum_out_reg_p:D`             | 1.029      | 0.887         | -0.143 | 875.247    | 低于 sd                           |
 | exp_sf | `sum_out_reg_p:D`             | 1.100      | 0.881         | -0.219 | 820.419    | 低于 sd                           |
 | exp_sg | `out_shift_reg_20__reg_p:D`   | 1.047      | 0.889         | -0.158 | 863.838    | 低于 sd                           |
+| exp_sh | `out_shift_reg_21__reg_p:D`   | 1.077      | 0.892         | -0.185 | 844.095    | 低于 sd                           |
+| exp_si | `sum_out_reg_p:D`             | 1.100      | 0.881         | -0.219 | 820.419    | 低于 sd                           |
+| exp_sj | `out_shift_reg_13__reg_p:D`   | 1.123      | 0.899         | -0.224 | 817.128    | 低于 sd                           |
 
 - exp_sa 参考：[mac16_2026-02-02T16_54_10.rpt](syn/yosys-syn-exp_sa-2026-02-03_00-53-53/mac16-1000MHz_sta_2026-02-02T16_54_10/mac16_2026-02-02T16_54_10.rpt#L4-L16)
 - exp_sb 参考：[mac16_2026-02-02T16_54_42.rpt](syn/yosys-syn-exp_sb-2026-02-03_00-54-24/mac16-1000MHz_sta_2026-02-02T16_54_42/mac16_2026-02-02T16_54_42.rpt#L4-L16)
@@ -22,8 +25,12 @@
 - exp_se 参考：[mac16_2026-02-02T17_11_39.rpt](syn/yosys-syn-exp_se-2026-02-03_01-11-13/mac16-1000MHz_sta_2026-02-02T17_11_39/mac16_2026-02-02T17_11_39.rpt#L4-L16)
 - exp_sf 参考：[mac16_2026-02-02T17_12_44.rpt](syn/yosys-syn-exp_sf-2026-02-03_01-12-18/mac16-1000MHz_sta_2026-02-02T17_12_44/mac16_2026-02-02T17_12_44.rpt#L4-L16)
 - exp_sg 参考：[mac16_2026-02-02T17_13_28.rpt](syn/yosys-syn-exp_sg-2026-02-03_01-13-02/mac16-1000MHz_sta_2026-02-02T17_13_28/mac16_2026-02-02T17_13_28.rpt#L4-L16)
+- exp_sh 参考（较新）：[mac16_2026-02-02T18_18_12.rpt](syn/yosys-syn-exp_sh-2026-02-03_02-17-45/mac16-1000MHz_sta_2026-02-02T18_18_12/mac16_2026-02-02T18_18_12.rpt#L1-L12)
+- exp_si 参考（较新）：[mac16_2026-02-02T18_19_07.rpt](syn/yosys-syn-exp_si-2026-02-03_02-18-49/mac16-1000MHz_sta_2026-02-02T18_19_07/mac16_2026-02-02T18_19_07.rpt#L1-L12)
+- exp_sj 参考（较新）：[mac16_2026-02-02T18_19_41.rpt](syn/yosys-syn-exp_sj-2026-02-03_02-19-23/mac16-1000MHz_sta_2026-02-02T18_19_41/mac16_2026-02-02T18_19_41.rpt#L1-L12)
 
 > 注：exp_sd 在 16_58_49 的 STA 中显示 **1644.118 MHz**（正 slack），但在 16_58_54 的 STA 中显示 **902.858 MHz**（负 slack）。两者应为不同角/约束或模型设置导致的差异，需要以赛题目标角为准。
+> exp_si/exp_sj 在较早报告中也出现更高频率（>1.5GHz），但较新报告回落到 820–817MHz，说明同样存在 corner/约束差异。
 
 ---
 
@@ -131,7 +138,13 @@
 - **exp_si**（方向 4.5-2）：基于 exp_sf 的 PPG 拆分（Stage2a/2b），其余结构保持 exp_sd（LLCBC 6→2）。
 - **exp_sj**（方向 4.5-3）：在 exp_sd 基础上替换 VMA 前缀网络为 **Kogge‑Stone**，用于评估前缀拓扑对时序/布线的影响。
 
-以上 3 个实验已建立 RTL（目录：rtl/experiments/exp_sh、exp_si、exp_sj），待后续跑 verif/yosys/sta。
+以上 3 个实验已建立 RTL（目录：rtl/experiments/exp_sh、exp_si、exp_sj），STA 显示均未超过 exp_sd。
+
+### 6.1 双/三向量冗余累加（exp_ta / exp_tb）
+
+- **exp_ta（双向量冗余）**：基于 exp_sd，Stage4 改为 CSA‑only 6→2 压缩。
+- **exp_tb（三向量冗余）**：基于 exp_sd，保留 3 向量反馈（sum/carry/extra），输出阶段用 CPA 合并三向量。
+- **状态**：已建立 RTL 目录（rtl/experiments/exp_ta、exp_tb），待 verif/yosys/sta 评估。
 
 ## 7. 结论
 
