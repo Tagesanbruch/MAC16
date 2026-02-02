@@ -1,0 +1,3 @@
+rich
+jinja2
+# No external plotting libs needed for simple HTML/CSS waterfal charts
